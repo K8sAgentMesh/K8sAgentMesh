@@ -8,7 +8,7 @@ platform can host for standing AI coding agents on Kubernetes.
 
 | Package | Contents |
 |---|---|
-| `mesh` | RuntimeAdapter 7-op contract (Spawn / Register / Route / Hibernate / Wake / Stop / Recreate), per-pod Gateway process manager, router, lifecycle state machine, child-process substrate, runtime adapters |
+| `mesh` | RuntimeAdapter 7-op contract (Spawn / Register / Route / Hibernate / Wake / Stop / Recreate), per-pod Gateway process manager, router, lifecycle state machine, child-process substrate, runtime adapters; Supervisor-side registration seams — `Registry` store interface, registration `Ingress`, TTL-prune `Sweeper`, health-sweep `SupervisorHealth` loop, route-to-endpoint selection |
 | `a2a` | A2A wire types (Task / Event / Status / AgentCard / ModelRoute) |
 
 ## Hosts, not owners
