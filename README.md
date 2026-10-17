@@ -1,5 +1,9 @@
 # K8sAgentMesh
 
+<p align="center">
+  <img src="brand/banner.png" alt="K8sAgentMesh — the runtime-agnostic AgentMesh seam" width="720">
+</p>
+
 K8sAgentMesh is the runtime-agnostic **AgentMesh** seam: the generic mesh
 surfaces of the AgentMesh architecture (approved chapter §1A/§9.3) that any
 platform can host for standing AI coding agents on Kubernetes.
