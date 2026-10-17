@@ -14,11 +14,18 @@
 //     Sweeper loop, the health-sweep Supervisor loop and the
 //     route-to-endpoint selection leg.
 //   - a2a     — the A2A wire types (Task/Event/Status/AgentCard/...).
+//   - apis    — the mesh-owned CRD contracts (apis/mesh/v1alpha1:
+//     MeshPool/MeshRoute/MeshTelemetry types + CRD YAML, no controller —
+//     P3.8). Tier A only: the thin, host-agnostic, mechanism-not-policy
+//     slice of the control-plane configuration that mesh code itself
+//     consumes; identity CRDs, scheduling policy, the OTel spine and
+//     rollout guards stay host-side.
 //
 // Hosts (adopters) keep their own control planes and plug in behind these
 // seams: k8squad is host #1 — its role-based scheduling becomes a POLICY on
-// the mesh scheduling interface; its CRD shapes, coordination guards and
-// telemetry spine stay host-side.
+// the mesh scheduling interface (its RolePool projects into MeshPool
+// semantics, never replaced); its identity CRD shapes, coordination guards
+// and telemetry spine stay host-side.
 //
 // This module must stay extraction-clean: no package here may import
 // github.com/K8squad/K8squad/* (enforced by hack/extraction-clean.sh in CI).

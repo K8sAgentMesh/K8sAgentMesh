@@ -22,6 +22,8 @@ jobs:
           go test ./... -count=1
       - name: Extraction-clean guard (ISI-5827 P3 seam)
         run: hack/extraction-clean.sh
+      - name: CRD structural-schema validation (ISI-6086 P3.8)
+        run: hack/crd-structural-validate.sh
       - name: gofmt
         run: |
           unformatted="$(gofmt -l .)"
