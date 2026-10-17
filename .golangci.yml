@@ -1,0 +1,28 @@
+# .golangci.yml — lint policy for K8sAgentMesh (ISI-6101).
+# golangci-lint v2 configuration. The enabled set mirrors the accepted CI
+# plan (ISI-6095 rev 82afbd79): errcheck, govet, staticcheck, revive,
+# unused, gosec (gosec runs inside this lint group, not as a separate job).
+# Formatting stays a separate `gofmt -l` gate in the quality job, and the
+# zero-dependency posture is guarded by the `go mod tidy -diff` check.
+version: "2"
+
+run:
+  timeout: 5m
+
+linters:
+  default: none
+  enable:
+    - errcheck
+    - govet
+    - staticcheck
+    - revive
+    - unused
+    - gosec
+  exclusions:
+    rules:
+      # Test files: unchecked errors and weak crypto flags are expected in
+      # test fixtures; production code stays fully gated.
+      - path: _test\.go
+        linters:
+          - errcheck
+          - gosec

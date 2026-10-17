@@ -1,32 +1,362 @@
 name: ci
+
+# Multi-job PR pipeline (ISI-6101, plan from ISI-6095 rev 82afbd79).
+#
+# Required jobs: build, unit, quality, guards, coverage, dco, security-code,
+# security-deps, sbom-cve (branch-protection set).
+# Self-activating stubs: docker, helm, functional — gated on the `detect`
+# job's outputs. `hashFiles()` cannot be used reliably in a job-level `if`
+# (the workspace is empty before checkout, see
+# github.com/orgs/community/discussions/25790), so detection runs once in
+# `detect` and the stubs gate on its outputs. They skip cleanly today and
+# activate as soon as the matching Phase 2 artifact lands.
+# Informational: performance (passes while no benchmarks exist).
+
 on:
   push:
-    branches: ["**"]
+    branches: [main]
   pull_request:
 
 permissions:
   contents: read
 
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
-  build-test:
+  detect:
+    name: Detect optional repo artifacts (docker / helm / integration)
     runs-on: ubuntu-latest
+    timeout-minutes: 15
+    outputs:
+      docker: ${{ steps.gates.outputs.docker }}
+      helm: ${{ steps.gates.outputs.helm }}
+      functional: ${{ steps.gates.outputs.functional }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@v7
+      - name: Evaluate artifact gates
+        id: gates
+        run: |
+          set -euo pipefail
+          docker=false
+          helm=false
+          functional=false
+          if compgen -G 'Dockerfile*' >/dev/null; then docker=true; fi
+          if [ -n "$(find . -path ./.git -prune -o -name Chart.yaml -print | head -n1)" ]; then helm=true; fi
+          if [ -n "$(find test/integration -type f -print -quit 2>/dev/null)" ]; then functional=true; fi
+          {
+            echo "docker=$docker"
+            echo "helm=$helm"
+            echo "functional=$functional"
+          } >> "$GITHUB_OUTPUT"
+
+  build:
+    name: Build + vet
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
         with:
           go-version-file: go.mod
-      - name: Verify module
-        run: |
-          go build ./...
-          go vet ./...
-          go test ./... -count=1
-      - name: Extraction-clean guard (ISI-5827 P3 seam)
-        run: hack/extraction-clean.sh
-      - name: CRD structural-schema validation (ISI-6086 P3.8)
-        run: hack/crd-structural-validate.sh
+          cache: true
+      - name: go build ./...
+        run: go build ./...
+      - name: go vet ./...
+        run: go vet ./...
+
+  unit:
+    name: Unit tests (race detector)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+          cache: false
+      - name: go test -race
+        # -race matters: gateway/childproc/sweeper goroutines.
+        # -count=1 bypasses the local test cache; the full-suite rerun is
+        # the regression net.
+        run: go test ./... -race -count=1
+
+  quality:
+    name: Lint + gofmt + module hygiene
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+          cache: false
       - name: gofmt
         run: |
           unformatted="$(gofmt -l .)"
           if [ -n "$unformatted" ]; then
             echo "gofmt needed on:" && echo "$unformatted" && exit 1
+          fi
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v9
+        with:
+          version: latest
+      - name: go mod tidy (zero-dependency guard)
+        # -diff prints the would-be diff and exits nonzero without touching
+        # go.mod/go.sum, so the zero-dep posture stays enforced.
+        run: |
+          if ! go mod tidy -diff; then
+            echo "::error::'go mod tidy' would change go.mod/go.sum — commit the tidied module files."
+            exit 1
+          fi
+
+  guards:
+    name: Extraction-clean + CRD structural guards
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - name: Extraction-clean guard (ISI-5827 P3 seam)
+        run: hack/extraction-clean.sh
+      - name: CRD structural-schema validation (ISI-6086 P3.8)
+        run: hack/crd-structural-validate.sh
+
+  coverage:
+    name: "Coverage (soft gate: warn <70%, fail <50%)"
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+          cache: false
+      - name: Run tests with coverage
+        # go test prints the per-package coverage summary in the log.
+        run: go test ./... -count=1 -coverprofile=coverage.out | tee coverage-summary.txt
+      - name: Total coverage soft gate
+        run: |
+          set -euo pipefail
+          total="$(go tool cover -func=coverage.out | awk '/^total:/ {sub(/%/,"",$3); print $3}')"
+          echo "Total coverage: ${total}%"
+          if awk -v c="$total" 'BEGIN {exit !(c < 50)}'; then
+            echo "::error::Coverage ${total}% is below the 50% floor."
+            exit 1
+          fi
+          if awk -v c="$total" 'BEGIN {exit !(c < 70)}'; then
+            echo "::warning::Coverage ${total}% is below the 70% target (soft gate)."
+          fi
+      - name: Render HTML report
+        run: go tool cover -html=coverage.out -o coverage.html
+      - name: Upload coverage artifacts
+        uses: actions/upload-artifact@v7
+        with:
+          name: coverage-report
+          path: |
+            coverage.out
+            coverage.html
+            coverage-summary.txt
+
+  dco:
+    name: DCO (Signed-off-by on every PR commit)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    if: github.event_name == 'pull_request'
+    permissions:
+      contents: read
+      pull-requests: read
+    steps:
+      - name: Verify DCO sign-offs on PR commits
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_REPOSITORY: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          bad="$(gh pr view "$PR_NUMBER" --repo "$PR_REPOSITORY" --json commits \
+            --jq '[.commits[]
+              | select((([.messageHeadline, .messageBody] | join("\n"))
+                  | split("\n")
+                  | map(test("^Signed-off-by: .*<.+@.+>"))
+                  | any) | not)
+              | {sha: .oid, subject: .messageHeadline}]')"
+          if [ "$bad" != "[]" ]; then
+            echo "::error::DCO violation — these PR commits lack a 'Signed-off-by:' trailer:"
+            echo "$bad" | jq -r '.[] | "  \(.sha)  \(.subject)"'
+            echo "Sign the commits (e.g. 'git rebase --signoff') and push again."
+            exit 1
+          fi
+          echo "OK: every PR commit carries a Signed-off-by trailer."
+
+  security-code:
+    name: govulncheck + CodeQL (Go)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@v7
+      - name: govulncheck
+        # Exits nonzero when vulnerable symbol calls are reachable.
+        uses: golang/govulncheck-action@v1
+        with:
+          repo-checkout: false
+          go-version-file: go.mod
+          go-package: ./...
+          cache: false
+      - name: CodeQL init
+        uses: github/codeql-action/init@v4
+        with:
+          languages: go
+      - name: CodeQL autobuild
+        uses: github/codeql-action/autobuild@v4
+      - name: CodeQL analyze
+        uses: github/codeql-action/analyze@v4
+        with:
+          category: /language:go
+
+  security-deps:
+    name: Dependency review
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    if: github.event_name == 'pull_request'
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/dependency-review-action@v5
+
+  sbom-cve:
+    name: SBOM (Syft) + CVE scan (Grype, fail on critical)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - name: Syft SBOM — SPDX
+        uses: anchore/sbom-action@v0
+        with:
+          path: .
+          format: spdx-json
+          artifact-name: sbom-spdx.json
+      - name: Syft SBOM — CycloneDX
+        uses: anchore/sbom-action@v0
+        with:
+          path: .
+          format: cyclonedx-json
+          artifact-name: sbom-cyclonedx.json
+      - name: Grype CVE scan (fails on Critical)
+        # severity-cutoff: critical — high and below are reported but do not
+        # fail the job (accepted CVE policy). Scans the source tree today;
+        # switches to the built image when the docker job activates.
+        uses: anchore/scan-action@v7
+        with:
+          path: .
+          fail-build: true
+          severity-cutoff: critical
+          output-format: table
+
+  performance:
+    name: Benchmarks (informational)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+          cache: false
+      - name: Run benchmarks
+        run: go test ./... -run='^$' -bench=. -benchmem -count=1 | tee bench.txt
+      - name: Count benchmark results
+        id: bench
+        run: |
+          count="$(grep -c '^Benchmark' bench.txt || true)"
+          echo "count=$count" >> "$GITHUB_OUTPUT"
+          echo "Benchmark result lines: $count"
+      - name: Publish benchmark results as PR comment
+        if: github.event_name == 'pull_request' && steps.bench.outputs.count != '0'
+        uses: benchmark-action/github-action-benchmark@v1
+        with:
+          tool: go
+          output-file-path: bench.txt
+          github-token: ${{ github.token }}
+          comment-on-alarm: true
+          auto-push: false
+          fail-on-error: false
+      - name: No benchmarks yet
+        if: steps.bench.outputs.count == '0'
+        run: echo "No benchmarks defined yet — performance job passes informationally."
+
+  docker:
+    name: Docker build (buildx, no push)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    needs: detect
+    if: needs.detect.outputs.docker == 'true'
+    steps:
+      - uses: actions/checkout@v7
+      - uses: docker/setup-buildx-action@v4
+      - name: Build image (no push)
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          push: false
+          tags: k8sagentmesh:ci
+
+  helm:
+    name: Helm lint + ct lint + kubeconform
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    needs: detect
+    if: needs.detect.outputs.helm == 'true'
+    steps:
+      - uses: actions/checkout@v7
+      - uses: azure/setup-helm@v5
+      - name: helm lint
+        run: |
+          set -euo pipefail
+          find . -path ./.git -prune -o -name Chart.yaml -print | while read -r ch; do
+            helm lint "$(dirname "$ch")"
+          done
+      - uses: helm/chart-testing-action@v2
+      - name: ct lint
+        run: ct lint --all --chart-dirs . --validate-maintainers=false
+      - name: kubeconform with repo CRDs
+        run: |
+          set -euo pipefail
+          curl -sSfL "https://github.com/yannh/kubeconform/releases/latest/download/kubeconform-linux-amd64.tar.gz" | tar xz kubeconform
+          find . -path ./.git -prune -o -name Chart.yaml -print | while read -r ch; do
+            dir="$(dirname "$ch")"
+            echo "kubeconform: $dir"
+            helm template "$dir" | ./kubeconform -strict -summary \
+              -ignore-missing-schemas \
+              -schema-location 'default' \
+              -schema-location 'file://apis/mesh/v1alpha1/crd'
+          done
+
+  functional:
+    name: Integration tests (envtest)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    needs: detect
+    if: needs.detect.outputs.functional == 'true'
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+          cache: false
+      - name: envtest-backed integration tests
+        # Once test/integration/ holds *_test.go files (Phase 2), this runs
+        # them; the envtest bootstrap (setup-envtest, KUBEBUILDER_ASSETS)
+        # is wired together with those tests.
+        run: |
+          set -euo pipefail
+          if [ -n "$(find test/integration -name '*_test.go' -print -quit 2>/dev/null)" ]; then
+            go test ./test/integration/... -count=1
+          else
+            echo "test/integration/ exists but has no *_test.go yet — informational pass."
           fi
