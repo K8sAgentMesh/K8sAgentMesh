@@ -1,0 +1,68 @@
+# Post-release smoke (ISI-6218): prove a fresh `helm install` of the
+# vanilla chart at DEFAULT values on a kind cluster pulls all three
+# published images for the stamped appVersion — the acceptance bar for
+# cutting a release. Dispatch at the tag ref being validated.
+name: smoke-install
+
+on:
+  workflow_dispatch:
+    inputs:
+      appVersion:
+        description: "Chart appVersion (v-stripped image tag) to smoke"
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  kind-default-install:
+    name: Fresh kind + vanilla helm install at default values
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: azure/setup-helm@v5
+        with:
+          version: v3.16.2
+      - name: Fresh kind cluster
+        uses: helm/kind-action@v1
+        with:
+          cluster_name: mesh-smoke
+          kubectl_version: v1.31.0
+      - name: Vanilla helm install at default values
+        run: |
+          set -euo pipefail
+          # Stamp the chart exactly as release.yml does at cut time.
+          tag="${{ inputs.appVersion }}"
+          sed -i "s/^version: .*/version: ${tag}/" deploy/helm/k8sagentmesh/Chart.yaml
+          sed -i "s/^appVersion: .*/appVersion: \"${tag}\"/" deploy/helm/k8sagentmesh/Chart.yaml
+          helm install mesh ./deploy/helm/k8sagentmesh \
+            --namespace mesh --create-namespace
+          helm list -n mesh
+      - name: Assert all three published images pulled
+        run: |
+          set -euo pipefail
+          sleep 25
+          # Positive check: every node image list carries all three tags.
+          for repo in mesh-gateway agentruntime toolchain-vibe; do
+            found=0
+            for node in $(kubectl get nodes -o jsonpath='{.items[*].metadata.name}'); do
+              if docker exec "$node" crictl images -o json \
+                | jq -e --arg img "ghcr.io/k8sagentmesh/${repo}:${{ inputs.appVersion }}" \
+                    '.images[].repoTags[]? | select(. == $img)' >/dev/null; then
+                found=1
+                echo "PULLED on ${node}: ghcr.io/k8sagentmesh/${repo}:${{ inputs.appVersion }}"
+                break
+              fi
+            done
+            [ "$found" = 1 ] || { echo "FAIL: ${repo}:${{ inputs.appVersion }} never pulled"; exit 1; }
+          done
+          # Negative check: zero pull-failure events anywhere.
+          if kubectl get events -A -o json \
+            | jq -e '.items[] | select(.reason=="ErrImagePull" or .reason=="ImagePullBackOff")' >/dev/null; then
+            echo "FAIL: image pull failure events present"
+            kubectl get events -A | grep -E "ErrImagePull|ImagePullBackOff" || true
+            exit 1
+          fi
+          echo "PASS: default-values vanilla install pulled all three published images"
+          kubectl -n mesh get pods -o wide || true
