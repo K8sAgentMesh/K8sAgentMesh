@@ -28,6 +28,9 @@ Enter these exact check names (GitHub check runs use the job IDs from ci.yml):
 Notes for the admin:
 - `dco` and `security-deps` run only on `pull_request` events by design — that matches branch protection,
   which evaluates PRs, not direct pushes.
+- `security-deps` requires the dependency graph + GitHub Advanced Security on this private repo
+  (Settings -> Code security). Until an admin enables them, the job probes availability and passes with a
+  warning annotation; it runs the strict dependency review automatically once the feature is on.
 - Do NOT add `detect` (utility job for conditional gating), `performance`, `docker`, `helm`, or `functional`
   to the required list.
 

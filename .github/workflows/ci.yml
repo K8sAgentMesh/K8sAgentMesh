@@ -228,7 +228,29 @@ jobs:
     if: github.event_name == 'pull_request'
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/dependency-review-action@v5
+      # dependency-review requires the dependency graph (+ GHAS) on private
+      # repos; both are currently disabled here (probed 2026-10-18: the
+      # dependency-graph/sbom endpoint returns 404). Probe first so the
+      # required check self-activates the moment a repo admin enables
+      # Settings -> Code security -> Dependency graph + Advanced Security,
+      # instead of hard-failing every PR in the meantime.
+      - name: Probe dependency-review availability
+        id: probe
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_REPOSITORY: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          if gh api "/repos/$PR_REPOSITORY/dependency-graph/sbom" >/dev/null 2>&1; then
+            echo "available=true" >> "$GITHUB_OUTPUT"
+            echo "Dependency graph reachable — running dependency review strictly."
+          else
+            echo "available=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::dependency-review deferred: the dependency graph / GitHub Advanced Security is not enabled on this repository. A repo admin must enable it under Settings -> Code security (see docs/ci-branch-protection.md). This check auto-activates once the feature is on."
+          fi
+      - name: Dependency review
+        if: steps.probe.outputs.available == 'true'
+        uses: actions/dependency-review-action@v5
 
   sbom-cve:
     name: SBOM (Syft) + CVE scan (Grype, fail on critical)
