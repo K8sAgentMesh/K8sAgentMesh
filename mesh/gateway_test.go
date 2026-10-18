@@ -85,7 +85,7 @@ func (f *fakeAdapter) Register(_ context.Context, h mesh.Handle) (a2a.AgentCard,
 	return fh.card, nil
 }
 
-func (f *fakeAdapter) Route(_ context.Context, h mesh.Handle, task a2a.Task) (mesh.Stream, error) {
+func (f *fakeAdapter) Route(_ context.Context, h mesh.Handle, _ a2a.Task) (mesh.Stream, error) {
 	f.mu.Lock()
 	if f.routeErr != nil {
 		err := f.routeErr

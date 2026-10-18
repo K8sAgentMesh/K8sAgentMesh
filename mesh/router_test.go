@@ -87,7 +87,7 @@ func TestHTTPRouterStreamsTaskEvents(t *testing.T) {
 }
 
 func TestHTTPRouterNonOKStatus(t *testing.T) {
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		http.Error(w, "task in flight (one pod = one run)", http.StatusConflict)
 	}))
 	defer srv.Close()
@@ -110,7 +110,7 @@ func TestHTTPRouterEmptyEndpoint(t *testing.T) {
 // closes the events channel even while the server is mid-stream.
 func TestHTTPRouterCloseAbortsStream(t *testing.T) {
 	release := make(chan struct{})
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "application/x-ndjson")
 		w.WriteHeader(http.StatusOK)
 		flusher, _ := w.(http.Flusher)

@@ -556,7 +556,7 @@ func (g *Gateway) RegisterOnce(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("mesh: register POST %s: %w", url, err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("mesh: register POST %s answered %s", url, resp.Status)
 	}
@@ -659,7 +659,7 @@ func ProbeReady(ctx context.Context, client *http.Client, baseURL string) bool {
 	if err != nil {
 		return false
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	return resp.StatusCode == http.StatusOK
 }
 

@@ -47,6 +47,7 @@ limitations under the License.
 //
 // This file stays [generic] by construction: no cluster API, no CRD, no host
 // package — the substrate arrives as the three mechanism seams below.
+
 package mesh
 
 import (

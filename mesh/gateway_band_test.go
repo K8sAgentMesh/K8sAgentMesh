@@ -65,7 +65,7 @@ func hasEvent(evs []string, want string) bool {
 }
 
 // bandGateway starts a gateway with the P1.3 band and a short-cadence sweep.
-func bandGateway(t *testing.T, min, max int, shrink time.Duration, sink *sinkRecorder) (*mesh.Gateway, *fakeAdapter, *sinkRecorder) {
+func bandGateway(t *testing.T, minProcs, maxProcs int, shrink time.Duration, sink *sinkRecorder) (*mesh.Gateway, *fakeAdapter, *sinkRecorder) {
 	t.Helper()
 	fa := newFakeAdapter()
 	rec := sink
@@ -75,8 +75,8 @@ func bandGateway(t *testing.T, min, max int, shrink time.Duration, sink *sinkRec
 	gw, err := mesh.NewGateway(mesh.GatewayConfig{
 		Adapter:  fa,
 		Envelope: gatewayEnv(),
-		Min:      min,
-		Max:      max,
+		Min:      minProcs,
+		Max:      maxProcs,
 		// Short bounds so the sweep is observable without wall-clock waits;
 		// HibernateToStop stays LONG so the P1.2 tier never interferes with
 		// the band assertions.
@@ -98,7 +98,7 @@ func bandGateway(t *testing.T, min, max int, shrink time.Duration, sink *sinkRec
 	return gw, fa, rec
 }
 
-func routeTask(t *testing.T, ctx context.Context, gw *mesh.Gateway) func() {
+func routeTask(ctx context.Context, t *testing.T, gw *mesh.Gateway) func() {
 	t.Helper()
 	stream, err := gw.Route(ctx, "", a2a.Task{A2ATaskID: time.Now().Format("150405.000000000")})
 	if err != nil {
@@ -129,13 +129,13 @@ func TestBand_LRUIdleSelection(t *testing.T) {
 	gw, fa, _ := bandGateway(t, 2, 3, time.Hour, nil)
 
 	// First route takes the oldest (equal clocks → first spawn-order pick).
-	r1 := routeTask(t, context.Background(), gw)
+	r1 := routeTask(context.Background(), t, gw)
 	r1() // settle → that process is idle again, but its lastUsed is NOW.
 	time.Sleep(5 * time.Millisecond)
 
 	// Second route must take the OTHER process: the first one is the most
 	// recently used; LRU prefers the one idle longer.
-	r2 := routeTask(t, context.Background(), gw)
+	r2 := routeTask(context.Background(), t, gw)
 	r2()
 
 	fa.mu.Lock()
@@ -153,9 +153,9 @@ func TestBand_SaturationGrowsTowardMax(t *testing.T) {
 	ctx := context.Background()
 
 	// Two routes saturate the floor; the third GROWS the standing set.
-	_ = routeTask(t, ctx, gw)
-	_ = routeTask(t, ctx, gw)
-	_ = routeTask(t, ctx, gw)
+	_ = routeTask(ctx, t, gw)
+	_ = routeTask(ctx, t, gw)
+	_ = routeTask(ctx, t, gw)
 
 	standing, busy, grown := countStates(gw)
 	if standing != 3 || busy != 3 || grown != 1 {
@@ -164,7 +164,7 @@ func TestBand_SaturationGrowsTowardMax(t *testing.T) {
 
 	// A fourth route saturates AT max: served by transient cold-overflow,
 	// NOT another kept slot (§5.3 tier 3).
-	_ = routeTask(t, ctx, gw)
+	_ = routeTask(ctx, t, gw)
 	standing, _, _ = countStates(gw)
 	if standing != 3 {
 		t.Fatalf("standing=%d after transient overflow, want 3 (max is the ceiling for KEPT slots)", standing)
@@ -178,10 +178,10 @@ func TestBand_TransientOverflowAtMax(t *testing.T) {
 	gw, fa, rec := bandGateway(t, 2, 3, time.Hour, nil)
 	ctx := context.Background()
 
-	_ = routeTask(t, ctx, gw) // idle
-	_ = routeTask(t, ctx, gw) // idle
-	_ = routeTask(t, ctx, gw) // grow → 3 standing
-	transient := routeTask(t, ctx, gw)
+	_ = routeTask(ctx, t, gw) // idle
+	_ = routeTask(ctx, t, gw) // idle
+	_ = routeTask(ctx, t, gw) // grow → 3 standing
+	transient := routeTask(ctx, t, gw)
 
 	if !hasEvent(rec.snapshot(), "pool.saturated") {
 		t.Fatal("pool.saturated signal never emitted")
@@ -217,9 +217,9 @@ func TestBand_GrownSlotShrinksAfterIdle(t *testing.T) {
 	gw, fa, _ := bandGateway(t, 2, 3, 30*time.Millisecond, nil)
 	ctx := context.Background()
 
-	r1 := routeTask(t, ctx, gw)
-	r2 := routeTask(t, ctx, gw)
-	r3 := routeTask(t, ctx, gw) // grow → 3 standing, 1 grown
+	r1 := routeTask(ctx, t, gw)
+	r2 := routeTask(ctx, t, gw)
+	r3 := routeTask(ctx, t, gw) // grow → 3 standing, 1 grown
 	r1()
 	r2()
 	r3() // all settled: every slot idle, grown clock running
@@ -246,8 +246,8 @@ func TestBand_BandlessSaturationStillRefuses(t *testing.T) {
 	gw, _, _ := bandGateway(t, 2, 0, time.Hour, nil) // Max clamps to Min
 	ctx := context.Background()
 
-	_ = routeTask(t, ctx, gw)
-	_ = routeTask(t, ctx, gw)
+	_ = routeTask(ctx, t, gw)
+	_ = routeTask(ctx, t, gw)
 	_, err := gw.Route(ctx, "", a2a.Task{A2ATaskID: "t3"})
 	if !errors.Is(err, mesh.ErrNoIdleProcess) {
 		t.Fatalf("err = %v, want ErrNoIdleProcess for a band-less saturated pool", err)

@@ -120,7 +120,7 @@ func (f *fakeStatus) get(key string) (mesh.PoolStatusReport, bool) {
 // "12 agents / 5 roles → 2–3 per pool" shape (chapter §9.1/§2.3), with the
 // coordinator's floor ≥ 1 already applied by the policy.
 func roster(team string) []mesh.PoolPlan {
-	mk := func(name string, min, max int) mesh.PoolPlan {
+	mk := func(name string, minProcs, maxProcs int) mesh.PoolPlan {
 		return mesh.PoolPlan{
 			Team: team,
 			Name: name,
@@ -129,8 +129,8 @@ func roster(team string) []mesh.PoolPlan {
 				RuntimeType: "opencode",
 				Model:       "glm-4.7",
 			},
-			Min:        min,
-			Max:        max,
+			Min:        minProcs,
+			Max:        maxProcs,
 			Generation: 1,
 		}
 	}
