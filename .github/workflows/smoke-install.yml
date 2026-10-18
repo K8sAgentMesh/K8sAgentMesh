@@ -1,7 +1,11 @@
 # Post-release smoke (ISI-6218): prove a fresh `helm install` of the
 # vanilla chart at DEFAULT values on a kind cluster pulls all three
 # published images for the stamped appVersion — the acceptance bar for
-# cutting a release. Dispatch at the tag ref being validated.
+# cutting a release. New GHCR packages default to PRIVATE, so the kind
+# node's containerd gets a registry auth patch built from the ephemeral
+# job token (packages:read); the credential never leaves the job. When
+# the packages are flipped public (org-owner one-click), the patch is
+# inert and the same proof covers the anonymous quickstart path.
 name: smoke-install
 
 on:
@@ -13,6 +17,7 @@ on:
 
 permissions:
   contents: read
+  packages: read
 
 jobs:
   kind-default-install:
@@ -24,11 +29,27 @@ jobs:
       - uses: azure/setup-helm@v5
         with:
           version: v3.16.2
+      - name: Build kind config (ghcr-authenticated containerd)
+        env:
+          GHCR_USER: ${{ github.actor }}
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          auth="$(printf '%s:%s' "$GHCR_USER" "$GHCR_TOKEN" | base64 -w0)"
+          cat > /tmp/kind-config.yaml <<EOF
+          kind: Cluster
+          apiVersion: kind.x-k8s.io/v1alpha4
+          containerdConfigPatches:
+          - |-
+            [plugins."io.containerd.grpc.v1.cri".registry.configs."ghcr.io".auth]
+              auth = "${auth}"
+          EOF
       - name: Fresh kind cluster
         uses: helm/kind-action@v1
         with:
           cluster_name: mesh-smoke
           kubectl_version: v1.31.0
+          config: /tmp/kind-config.yaml
       - name: Vanilla helm install at default values
         run: |
           set -euo pipefail
