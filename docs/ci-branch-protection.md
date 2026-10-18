@@ -58,14 +58,22 @@ list (one-line change in the protection rule).
 - Linear history: recommended (matches current single-line main history), optional.
 - Require branches up to date before merging: enable after the first live PR cycle is green to avoid noisy rebases during rollout.
 
-## Validation evidence (to be completed when repo access is granted)
+## Validation evidence (ISI-6102, completed 2026-10-18)
 
 1. DONE — `actionlint` 1.7.7 clean over `.github/workflows/ci.yml` (only workflow file in the repo).
-2. PENDING — live test PR: all 9 required jobs green; `docker`/`helm`/`functional` skip cleanly; `performance` passes with 0 benchmarks; `dco` fails on a deliberately unsigned commit, green after signoff fix.
-3. PENDING — `push` to main runs the same job set (`dco`/`security-deps` PR-only by design).
+2. DONE — live test PR: https://github.com/K8sAgentMesh/K8sAgentMesh/pull/1, head `b86da60`, run 39106702257 —
+   all 9 required jobs green (`build`, `unit`, `quality`, `guards`, `coverage`, `dco`, `security-code`,
+   `security-deps`, `sbom-cve`); `docker`/`helm`/`functional` skip cleanly via `detect`; `performance`
+   passes with 0 benchmarks. DCO probe: run 39104541132 on deliberately unsigned `82266c7` FAILED `dco`,
+   green after the signoff fix (`ad39397`, run 39105399636).
+3. DONE — `push` to main after merge (`7ceabbc`, run 39106786496) runs the same job set:
+   all jobs green, `dco`/`security-deps` skipped (PR-only by design), conditional jobs skipped.
 
-Blocked on: agent GitHub credential lacks access to K8sAgentMesh/K8sAgentMesh (403 `Write access not granted`);
-confirmation card pending on ISI-6102 (interaction `47337c8d`), unblock owner: repo admin.
-The ISI-6101 workflow commit (59f27a3) is also waiting on the same push access.
+Failures triaged to concrete fixes along the way:
+- `security-code`: job token needed `actions: read` for the CodeQL action's workflow-runs status call (commit 204c6d5);
+  the CodeQL upload itself then requires GHAS (see the GHAS note above), so CodeQL is gated on the same
+  availability probe (commit b86da60). `govulncheck` stays strict on every PR.
+- `security-deps`: dependency review requires the dependency graph + GHAS on this private repo —
+  self-activating probe added (commit 418b8bb); runs strictly once the features are enabled.
 
 <!-- dco negative probe (ISI-6102): this commit is deliberately unsigned; expect the dco check to fail, then the signoff fix re-push to go green. -->
