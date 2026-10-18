@@ -76,6 +76,12 @@ spec:
                 secretKeyRef:
                   name: {{ .Values.agentruntime.credentials.existingSecret }}
                   key: {{ .Values.agentruntime.credentials.openaiApiKeyKey }}
+            {{- else if eq .Values.agentruntime.runtimeType "goose" }}
+            - name: OPENAI_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.agentruntime.credentials.existingSecret }}
+                  key: {{ .Values.agentruntime.credentials.openaiApiKeyKey }}
             {{- end }}
             {{- end }}
             {{- range .Values.extraEnv }}
