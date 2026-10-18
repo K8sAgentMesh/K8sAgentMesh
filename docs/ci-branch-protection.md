@@ -31,6 +31,8 @@ Notes for the admin:
 - `security-deps` requires the dependency graph + GitHub Advanced Security on this private repo
   (Settings -> Code security). Until an admin enables them, the job probes availability and passes with a
   warning annotation; it runs the strict dependency review automatically once the feature is on.
+- The CodeQL half of `security-code` needs the same Advanced Security enablement (code scanning). Until then
+  the job still enforces govulncheck on every PR and runs CodeQL automatically once the feature is on.
 - Do NOT add `detect` (utility job for conditional gating), `performance`, `docker`, `helm`, or `functional`
   to the required list.
 
