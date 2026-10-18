@@ -63,7 +63,7 @@ jobs:
           sed -i "s/^version: .*/version: ${tag}/" deploy/helm/k8sagentmesh/Chart.yaml
           sed -i "s/^appVersion: .*/appVersion: \"${tag}\"/" deploy/helm/k8sagentmesh/Chart.yaml
           cat deploy/helm/k8sagentmesh/Chart.yaml
-      - uses: azure/setup-helm@v4
+      - uses: azure/setup-helm@v5
         with:
           version: v3.16.2
       - name: Package
