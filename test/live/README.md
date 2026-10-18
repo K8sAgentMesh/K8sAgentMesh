@@ -46,6 +46,17 @@ chart references.
    mesh-side wire and settle contract; vendoring a real wrapper remains
    repo work.
 
+## Gap 5 — the engine's vibe argv targets the k8squad-internal lineage
+
+`agentruntime`'s vibe engine passes `--auto-approve`; no public
+`mistral-vibe` (checked 1.0.0–2.9.6) ever had that flag — `-p` mode
+auto-approves by design there. The engine's `vibeCLIVersion` pin
+(`py-v0.3.0`) references a tag that exists in no public registry, so the
+argv shape is effectively k8squad-internal. The lane's fixture wraps the
+real CLI with a shim that drops the flag (test-only; see
+`lane-vibe.Dockerfile`). Vendoring or aligning the engine's CLI contract
+with a public pin is repo work.
+
 ## Fixture map
 
 | File | Role |
