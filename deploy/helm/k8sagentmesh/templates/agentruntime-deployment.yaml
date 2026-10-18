@@ -1,0 +1,91 @@
+{{- if .Values.agentruntime.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "k8sagentmesh.fullname" . }}-agentruntime
+  labels:
+    {{- include "k8sagentmesh.labels" . | nindent 4 }}
+    app.kubernetes.io/component: agentruntime
+spec:
+  replicas: {{ .Values.agentruntime.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "k8sagentmesh.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: agentruntime
+  template:
+    metadata:
+      labels:
+        {{- include "k8sagentmesh.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: agentruntime
+    spec:
+      serviceAccountName: {{ include "k8sagentmesh.serviceAccountName" . }}
+      {{- with .Values.agentruntime.nodeSelector }}
+      nodeSelector: {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.agentruntime.tolerations }}
+      tolerations: {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.agentruntime.affinity }}
+      affinity: {{- toYaml . | nindent 8 }}
+      {{- end }}
+      # The pinned CLI toolchain is layered onto the supervisor image by an
+      # initContainer (images/README.md): the supervisor binary stays small,
+      # the CLI substrate stays independently versioned.
+      {{- if .Values.agentruntime.toolchain.enabled }}
+      initContainers:
+        - name: toolchain
+          image: {{ include "k8sagentmesh.image" (dict "registry" .Values.global.image.registry "repository" .Values.agentruntime.toolchain.image.repository "tag" .Values.agentruntime.toolchain.image.tag "appVersion" .Chart.AppVersion) }}
+          imagePullPolicy: {{ .Values.global.image.pullPolicy }}
+          command: ["sh", "-c", "cp -r /root/.local /toolchain/.local 2>/dev/null || cp -r /usr/local /toolchain/usr-local 2>/dev/null || true"]
+          volumeMounts:
+            - name: toolchain
+              mountPath: /toolchain
+      volumes:
+        - name: toolchain
+          emptyDir: {}
+      {{- end }}
+      containers:
+        - name: agentruntime
+          image: {{ include "k8sagentmesh.image" (dict "registry" .Values.global.image.registry "repository" .Values.agentruntime.image.repository "tag" .Values.agentruntime.image.tag "appVersion" .Chart.AppVersion) }}
+          imagePullPolicy: {{ .Values.global.image.pullPolicy }}
+          env:
+            - name: KSQUAD_RUNTIME_TYPE
+              value: {{ .Values.agentruntime.runtimeType | quote }}
+            {{- if .Values.agentruntime.model }}
+            - name: VIBE_ACTIVE_MODEL
+              value: {{ .Values.agentruntime.model | quote }}
+            {{- end }}
+            {{- if .Values.agentruntime.modelRoute.endpoint }}
+            - name: MISTRAL_BASE_URL
+              value: {{ .Values.agentruntime.modelRoute.endpoint | quote }}
+            {{- if .Values.agentruntime.modelRoute.model }}
+            - name: VIBE_ACTIVE_MODEL
+              value: {{ .Values.agentruntime.modelRoute.model | quote }}
+            {{- end }}
+            {{- end }}
+            {{- if .Values.agentruntime.credentials.existingSecret }}
+            {{- if eq .Values.agentruntime.runtimeType "vibe" }}
+            - name: MISTRAL_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.agentruntime.credentials.existingSecret }}
+                  key: {{ .Values.agentruntime.credentials.mistralApiKeyKey }}
+            {{- else if eq .Values.agentruntime.runtimeType "codex" }}
+            - name: OPENAI_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.agentruntime.credentials.existingSecret }}
+                  key: {{ .Values.agentruntime.credentials.openaiApiKeyKey }}
+            {{- end }}
+            {{- end }}
+            {{- range .Values.extraEnv }}
+            - name: {{ .name | quote }}
+              value: {{ .value | quote }}
+            {{- end }}
+          {{- if .Values.agentruntime.toolchain.enabled }}
+          volumeMounts:
+            - name: toolchain
+              mountPath: /toolchain
+          {{- end }}
+          resources: {{- toYaml .Values.agentruntime.resources | nindent 12 }}
+{{- end }}

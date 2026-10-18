@@ -1,0 +1,101 @@
+# MeshRoute — the mesh-owned routing/selection CRD contract (P3.8, ISI-6086).
+# Shapes derive from the lifted route leg (P3.4 mesh.Route + the gateway's
+# §5.3 selection). Mechanism only: per-team rollout flags, claim custody and
+# the at-most-once marker stay host-side (D3.3). fallback is kept per the
+# board decision on ISI-5827 interaction 826a7541 (host #1 legacy safety
+# valve; host #2 uses "fail"). No controller ships with the module.
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: meshroutes.mesh.k8sagentmesh.io
+  labels:
+    app.kubernetes.io/part-of: k8sagentmesh
+spec:
+  group: mesh.k8sagentmesh.io
+  names:
+    plural: meshroutes
+    singular: meshroute
+    kind: MeshRoute
+    listKind: MeshRouteList
+    shortNames:
+      - mroute
+      - mroutes
+  scope: Namespaced
+  versions:
+    - name: v1alpha1
+      served: true
+      storage: true
+      subresources:
+        status: {}
+      additionalPrinterColumns:
+        - name: Team
+          type: string
+          jsonPath: .spec.match.team
+        - name: Role
+          type: string
+          jsonPath: .spec.match.role
+        - name: Selection
+          type: string
+          jsonPath: .spec.selection
+        - name: Fallback
+          type: string
+          jsonPath: .spec.fallback
+      schema:
+        openAPIV3Schema:
+          type: object
+          description: 'MeshRoute is the routing/selection policy: how the mesh leg picks a standing process and what it does when it cannot. Mechanism only — rollout flags and custody guards stay host-side.'
+          required: ["spec"]
+          properties:
+            apiVersion:
+              type: string
+              description: APIVersion defines the versioned schema (mesh.k8sagentmesh.io/v1alpha1).
+            kind:
+              type: string
+              description: Kind is the REST resource (MeshRoute).
+            metadata:
+              type: object
+              x-kubernetes-preserve-unknown-fields: true
+            spec:
+              type: object
+              properties:
+                match:
+                  type: object
+                  description: Scope of the policy; absent means the cluster default.
+                  properties:
+                    team:
+                      type: string
+                      description: Team whose dispatches this policy scopes.
+                    role:
+                      type: string
+                      description: Role scope; empty matches every role of the team.
+                selection:
+                  type: string
+                  description: Standing-process pick strategy; empty behaves as "preferIdle" (today's mechanism).
+                  enum: ["preferIdle", "random", "sticky"]
+                lruTiebreak:
+                  type: boolean
+                  description: Order equal-preference candidates least-recently-seen first (§5.3); absent behaves as true.
+                recreateSlo:
+                  type: string
+                  description: Status-facing arrival → process-ready target on the recreate path; empty defaults to 3s.
+                  pattern: '^([0-9]+(\.[0-9]+)?(ms|s|m|h))+$'
+                fallback:
+                  type: string
+                  description: '"legacy": fall back to the host''s pre-mesh dispatch leg (host #1 safety valve). "fail": no fallback (host #2). Empty behaves as "legacy".'
+                  enum: ["legacy", "fail"]
+            status:
+              type: object
+              description: Bounded route telemetry read-back.
+              properties:
+                routedTotal:
+                  type: integer
+                  format: int64
+                  description: Count of mesh-leg routed dispatches.
+                fallbackTotal:
+                  type: integer
+                  format: int64
+                  description: Count of dispatches that took the fallback.
+                p95ReadyMs:
+                  type: integer
+                  format: int64
+                  description: p95 arrival → process-ready latency, milliseconds.

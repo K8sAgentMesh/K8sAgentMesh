@@ -1,0 +1,71 @@
+# Default values for the vanilla k8sagentmesh chart (ISI-6158 C3).
+
+# -- Global image settings. Tags left empty default to the chart's
+# appVersion (the repo tag the release workflow stamps).
+global:
+  image:
+    registry: ghcr.io/k8sagentmesh
+    pullPolicy: IfNotPresent
+
+# -- Standing-process gateway (cmd/mesh-gateway).
+gateway:
+  enabled: true
+  replicaCount: 1
+  image:
+    repository: mesh-gateway
+    tag: ""        # defaults to .Chart.AppVersion
+  runtimeType: vibe
+  model: ""        # optional envelope model override
+  agentName: mesh-gateway
+  pool:
+    min: 1
+    max: 1
+  resources: {}
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+  service:
+    type: ClusterIP
+    port: 8080
+
+# -- Per-task agentruntime supervisor (cmd/agentruntime).
+agentruntime:
+  enabled: true
+  replicaCount: 1
+  image:
+    repository: agentruntime
+    tag: ""        # defaults to .Chart.AppVersion
+  runtimeType: vibe
+  model: ""        # optional VIBE_ACTIVE_MODEL pin override
+  # -- Optional BYO OpenAI-compatible model route (e.g. an Ollama lane).
+  modelRoute:
+    endpoint: ""   # e.g. http://ollama.ollama.svc:11434/v1
+    model: ""
+  # -- Toolchain layer: the pinned CLI substrate image copied onto the
+  # supervisor's PATH by an initContainer (see images/README.md).
+  toolchain:
+    enabled: true
+    image:
+      repository: toolchain-vibe
+      tag: ""      # defaults to .Chart.AppVersion
+  # -- Credential seam: reference an existing Secret; the key is projected
+  # into the runtime-native env var (MISTRAL_API_KEY for vibe,
+  # OPENAI_API_KEY for codex). Never set raw credentials here.
+  credentials:
+    existingSecret: ""        # e.g. mesh-vibe-credentials
+    mistralApiKeyKey: mistral-api-key
+    openaiApiKeyKey: openai-api-key
+  resources: {}
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+
+rbac:
+  # -- Create ServiceAccount + ClusterRole/Binding for the mesh CRDs.
+  create: true
+  serviceAccount:
+    create: true
+    name: ""
+
+# -- Extra pod env (name/value pairs) applied to both Deployments.
+extraEnv: []

@@ -1,0 +1,25 @@
+# toolchain-vibe — the pinned uv/Python substrate the headless `vibe` CLI
+# depends on (ISI-6158 C3). vibe==0.3.0 is the pin the agentruntime engine
+# advertises as CLIVersion py-v0.3.0 (ADR-017 reproducibility); bump them
+# together or not at all.
+# The codex toolchain image is an optional follow-up (plan decision D2).
+FROM python:3.12-slim
+
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends ca-certificates git curl ripgrep \
+ && rm -rf /var/lib/apt/lists/*
+
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
+
+# Pinned install; the layer cache keeps rebuilds deterministic.
+RUN uv tool install --python-preference only-system vibe==0.3.0 \
+ && uv tool update-shell || true
+
+ENV PATH="/root/.local/bin:${PATH}" \
+    VIBE_NONINTERACTIVE=1
+
+# Smoke: the pinned CLI must answer --version.
+RUN vibe --version
+
+WORKDIR /workspace
+ENTRYPOINT ["vibe"]

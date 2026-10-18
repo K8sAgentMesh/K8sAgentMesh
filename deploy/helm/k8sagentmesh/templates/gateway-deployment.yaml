@@ -1,0 +1,56 @@
+{{- if .Values.gateway.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "k8sagentmesh.fullname" . }}-gateway
+  labels:
+    {{- include "k8sagentmesh.labels" . | nindent 4 }}
+    app.kubernetes.io/component: gateway
+spec:
+  replicas: {{ .Values.gateway.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "k8sagentmesh.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: gateway
+  template:
+    metadata:
+      labels:
+        {{- include "k8sagentmesh.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: gateway
+    spec:
+      serviceAccountName: {{ include "k8sagentmesh.serviceAccountName" . }}
+      {{- with .Values.gateway.nodeSelector }}
+      nodeSelector: {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.gateway.tolerations }}
+      tolerations: {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.gateway.affinity }}
+      affinity: {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: gateway
+          image: {{ include "k8sagentmesh.image" (dict "registry" .Values.global.image.registry "repository" .Values.gateway.image.repository "tag" .Values.gateway.image.tag "appVersion" .Chart.AppVersion) }}
+          imagePullPolicy: {{ .Values.global.image.pullPolicy }}
+          env:
+            - name: MESH_RUNTIME_TYPE
+              value: {{ .Values.gateway.runtimeType | quote }}
+            - name: MESH_AGENT_NAME
+              value: {{ .Values.gateway.agentName | quote }}
+            - name: MESH_POOL_MIN
+              value: {{ .Values.gateway.pool.min | quote }}
+            - name: MESH_POOL_MAX
+              value: {{ .Values.gateway.pool.max | quote }}
+            {{- if .Values.gateway.model }}
+            - name: MESH_MODEL
+              value: {{ .Values.gateway.model | quote }}
+            {{- end }}
+            {{- range .Values.extraEnv }}
+            - name: {{ .name | quote }}
+              value: {{ .value | quote }}
+            {{- end }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.gateway.service.port }}
+          resources: {{- toYaml .Values.gateway.resources | nindent 12 }}
+{{- end }}
