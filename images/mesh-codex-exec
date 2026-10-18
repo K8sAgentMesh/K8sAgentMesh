@@ -1,0 +1,39 @@
+#!/bin/sh
+# mesh-codex-exec — the vendored D4 stdin wrapper the agentruntime codex
+# engine execs (agentruntime/codex.go; ISI-6217 gap 3). Contract (the k8squad
+# D4 wrapper's, vendored mesh-side): combine the spilled system-context
+# file (KSQUAD_SYSTEM_CONTEXT_FILE) with KSQUAD_INPUT, blank-line separated —
+# agentruntime.EnvelopePrompt semantics — and pipe the envelope into
+# `codex exec -` on stdin, passing all argv through untouched. The prompt
+# rides stdin, never argv (NFR-SEC1).
+#
+# It also selects the BYO provider the runtime renders into
+# $CODEX_HOME/config.toml ([model_providers.ksquad-byo], wire_api="chat")
+# so codex speaks chat-completions to an OpenAI-compatible BYO endpoint
+# (e.g. an Ollama lane) instead of the Responses API.
+#
+# Installed at /usr/local/bin/mesh-codex-exec by
+# images/Dockerfile.toolchain-codex. Hosts embedding the engine with their
+# own wrapper keep their name via MESH_CODEX_EXEC_BIN (engine-side env).
+set -eu
+
+ctx=""
+if [ -n "${KSQUAD_SYSTEM_CONTEXT_FILE:-}" ] && [ -f "${KSQUAD_SYSTEM_CONTEXT_FILE:-}" ]; then
+  ctx="$(cat "${KSQUAD_SYSTEM_CONTEXT_FILE}")"
+fi
+input="${KSQUAD_INPUT:-}"
+
+# Select the BYO provider when the runtime rendered its config (idempotent).
+cfg="${CODEX_HOME:-}/config.toml"
+if [ -f "$cfg" ] && ! grep -q '^model_provider' "$cfg"; then
+  printf '\nmodel_provider = "ksquad-byo"\n' >> "$cfg"
+fi
+
+# buildEnvelope: system context precedes the instruction; either may be empty.
+if [ -n "$ctx" ] && [ -n "$input" ]; then
+  printf '%s\n\n%s\n' "$ctx" "$input"
+elif [ -n "$ctx" ]; then
+  printf '%s\n' "$ctx"
+elif [ -n "$input" ]; then
+  printf '%s\n' "$input"
+fi | exec codex exec - "$@"

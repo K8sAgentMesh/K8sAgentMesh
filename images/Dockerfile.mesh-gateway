@@ -1,17 +1,37 @@
-# mesh-gateway — the standalone K8sAgentMesh standing-process gateway
-# (ISI-6158 C3). Built from the repo root:
+# mesh-gateway — the standalone K8sAgentMesh gateway image (ISI-6158 C3,
+# substrate closed in ISI-6217): the HTTP gateway entrypoint (cmd/meshgw —
+# GET /healthz, GET /ready, POST /task over the standing band) plus the
+# mesh-owned standing supervisor (cmd/mesh-supervisor) it launches per band
+# slot via mesh.LocalHost (MESHGW_SHIM_BIN). The per-task coding-agent CLIs
+# are layered on top by the chart's toolchain initContainer — see
+# deploy/helm and images/README.md.
+#
+# ISI-6217: the base moved from distroless to debian-slim because the
+# gateway pod is the standing band's host — its supervisor children exec
+# the layered toolchain CLIs (uv/Python, node), which a distroless/static
+# image cannot run. Built from the repo root:
 #   docker build -f images/Dockerfile.mesh-gateway -t mesh-gateway .
 FROM golang:1.27 AS build
 WORKDIR /src
 COPY go.mod go.sum* ./
 RUN go mod download || true
 COPY . .
-RUN CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /out/mesh-gateway ./cmd/mesh-gateway
+RUN CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /out/meshgw ./cmd/meshgw \
+ && CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /out/mesh-supervisor ./cmd/mesh-supervisor \
+ && CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /out/mesh-gateway ./cmd/mesh-gateway
 
-FROM gcr.io/distroless/static-debian12:nonroot
+FROM debian:bookworm-slim
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends ca-certificates git \
+ && rm -rf /var/lib/apt/lists/*
+COPY --from=build /out/meshgw /usr/local/bin/meshgw
+COPY --from=build /out/mesh-supervisor /usr/local/bin/mesh-supervisor
 COPY --from=build /out/mesh-gateway /usr/local/bin/mesh-gateway
-# Env contract (see cmd/mesh-gateway): MESH_RUNTIME_TYPE, MESH_MODEL,
-# MESH_POOL_MIN/MAX; credential envs are supplied by the pod seam.
-ENV MESH_RUNTIME_TYPE=vibe
-USER nonroot:nonroot
-ENTRYPOINT ["/usr/local/bin/mesh-gateway"]
+# Env contract (see cmd/meshgw): MESHGW_RUNTIME, MESHGW_MIN/MAX, MESHGW_MODEL,
+# MESHGW_SHIM_BIN (the standing supervisor LocalHost execs — the chart points
+# it at /usr/local/bin/mesh-supervisor); credential envs are supplied by the
+# pod seam. The standing supervisor honors KSQUAD_SUPERVISOR_ADDR +
+# KSQUAD_RUNTIME_TYPE (stamped per slot by mesh.LocalHost).
+ENV MESHGW_RUNTIME=vibe \
+    MESHGW_SHIM_BIN=/usr/local/bin/mesh-supervisor
+ENTRYPOINT ["/usr/local/bin/meshgw"]

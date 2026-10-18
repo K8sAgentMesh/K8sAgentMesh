@@ -28,8 +28,8 @@ func TestVibeRegistryEntry(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Get(vibe): %v", err)
 	}
-	if got := rt.CLIVersion(); got != "py-v0.3.0" {
-		t.Errorf("CLIVersion = %q, want py-v0.3.0", got)
+	if got := rt.CLIVersion(); got != "py-v2.9.6" {
+		t.Errorf("CLIVersion = %q, want py-v2.9.6", got)
 	}
 	if got := rt.Type(); got != RuntimeTypeVibe {
 		t.Errorf("Type = %q, want %q", got, RuntimeTypeVibe)
@@ -126,7 +126,7 @@ func TestParseVibeLine(t *testing.T) {
 	if events[0].Message.Text != "hello there" {
 		t.Errorf("content = %q", events[0].Message.Text)
 	}
-	if got := parseVibeLine("vibe 0.3.0 — mistral"); got != nil {
+	if got := parseVibeLine("vibe 2.9.6 — mistral"); got != nil {
 		t.Errorf("banner line produced events: %+v", got)
 	}
 	if got := parseVibeLine(`{"type":"usage","tokens":{}}`); got != nil {

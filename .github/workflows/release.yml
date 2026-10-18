@@ -29,6 +29,8 @@ jobs:
             dockerfile: images/Dockerfile.agentruntime
           - name: toolchain-vibe
             dockerfile: images/Dockerfile.toolchain-vibe
+          - name: toolchain-codex
+            dockerfile: images/Dockerfile.toolchain-codex
     steps:
       - uses: actions/checkout@v7
       - uses: docker/setup-buildx-action@v4

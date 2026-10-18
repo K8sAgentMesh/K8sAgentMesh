@@ -18,6 +18,7 @@ package agentruntime
 
 import (
 	"encoding/json"
+	"os"
 	"strings"
 
 	"github.com/K8sAgentMesh/K8sAgentMesh/a2a"
@@ -37,7 +38,27 @@ const (
 	// codexContextWindow is codexDefaultModel's context-window budget authority
 	// for the context Assembler (spec §6.2).
 	codexContextWindow = 272000
+
+	// codexExecWrapper is the vendored D4 stdin wrapper the engine execs
+	// (ISI-6217 gap 3): it combines the spilled system-context file
+	// (KSQUAD_SYSTEM_CONTEXT_FILE) with KSQUAD_INPUT and pipes the envelope
+	// into `codex exec -`. Shipped at images/mesh-codex-exec and installed
+	// into the codex toolchain image (images/Dockerfile.toolchain-codex).
+	codexExecWrapper = "mesh-codex-exec"
+	// codexExecWrapperEnv overrides the wrapper binary name — a host
+	// embedding this engine with its own D4 wrapper (e.g. the k8squad host's
+	// ksquad-codex-exec) keeps its name without forking the engine.
+	codexExecWrapperEnv = "MESH_CODEX_EXEC_BIN"
 )
+
+// codexExecWrapperPath resolves the D4 wrapper binary the engine execs: the
+// env override when set, the vendored mesh-codex-exec default otherwise.
+func codexExecWrapperPath() string {
+	if v := os.Getenv(codexExecWrapperEnv); v != "" {
+		return v
+	}
+	return codexExecWrapper
+}
 
 // codex is the ChatGPT Codex shim adapter (epic ISI-3647, arch ISI-3646).
 // Codex is OpenAI's official Rust coding agent; it speaks the OpenAI wire
@@ -70,7 +91,7 @@ func (codex) DefaultModel() a2a.ModelInfo {
 
 func (r codex) Command(lc LaunchContext) (ExecSpec, error) {
 	// Envelope rides env (never argv) so the prompt stays out of the process
-	// table; the ksquad-codex-exec wrapper pipes it into `codex exec -` (D4).
+	// table; the mesh-codex-exec wrapper pipes it into `codex exec -` (D4).
 	// ISI-5329: the large system context spills to a workdir file (ctxFile) and
 	// only its path travels in the env, so a token-budgeted context no longer
 	// overruns the kernel's per-env-string ceiling and trips exec with E2BIG.
@@ -90,7 +111,7 @@ func (r codex) Command(lc LaunchContext) (ExecSpec, error) {
 	env = append(env, "CODEX_HOME="+lc.WorkDir)
 
 	spec := ExecSpec{
-		Path: "ksquad-codex-exec",
+		Path: codexExecWrapperPath(),
 		Args: []string{
 			"--json",
 			"--skip-git-repo-check",
@@ -102,7 +123,7 @@ func (r codex) Command(lc LaunchContext) (ExecSpec, error) {
 		Env:     env,
 		WorkDir: lc.WorkDir,
 		// ISI-5329: the spilled system-context file, materialized in the workdir
-		// before launch; the ksquad-codex-exec wrapper reads it via
+		// before launch; the mesh-codex-exec wrapper reads it via
 		// KSQUAD_SYSTEM_CONTEXT_FILE and pipes the envelope into codex on stdin.
 		WorkDirFiles: []WorkDirFile{ctxFile},
 		// ISI-4732: codex `exec --json` emits a JSONL thread-event stream on
