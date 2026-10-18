@@ -3,7 +3,7 @@
 # flavor is stamped via KSQUAD_RUNTIME_TYPE.
 # The per-task coding-agent CLIs are layered on top of this image (the
 # toolchain-vibe image is the reference substrate) — see deploy/helm.
-FROM golang:1.26 AS build
+FROM golang:1.27 AS build
 WORKDIR /src
 COPY go.mod go.sum* ./
 RUN go mod download || true

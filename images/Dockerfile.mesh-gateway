@@ -1,7 +1,7 @@
 # mesh-gateway — the standalone K8sAgentMesh standing-process gateway
 # (ISI-6158 C3). Built from the repo root:
 #   docker build -f images/Dockerfile.mesh-gateway -t mesh-gateway .
-FROM golang:1.26 AS build
+FROM golang:1.27 AS build
 WORKDIR /src
 COPY go.mod go.sum* ./
 RUN go mod download || true
