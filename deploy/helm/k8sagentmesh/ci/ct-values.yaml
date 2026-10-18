@@ -1,0 +1,36 @@
+# chart-testing (`ct install`) override values.
+#
+# The real application images (ghcr.io/k8sagentmesh/{mesh-gateway,agentruntime,
+# toolchain-vibe}) are not published yet — GHCR publish is tracked in ISI-6103 /
+# ISI-6212. Until they land, `ct install` on kind cannot pull them, which turns
+# the Helm CI job red on every PR.
+#
+# chart-testing uses this file INSTEAD of the default values.yaml when it
+# installs the chart on kind, so we swap in a public, always-running image
+# (registry.k8s.io/pause) for the gateway + agentruntime workloads. The
+# deployments declare no readiness/liveness probes, so a Running pause pod
+# satisfies `helm install --wait` — proving the chart renders and applies on a
+# real kind cluster (ISI-6211 item 1: vanilla install, zero k8squad) without
+# depending on the still-unpublished app images.
+#
+# This file is test-only: real installs never read ci/, so chart behaviour is
+# unchanged. Once the app images publish, this override can pin the real tag.
+global:
+  image:
+    registry: registry.k8s.io
+    pullPolicy: IfNotPresent
+
+gateway:
+  image:
+    repository: pause
+    tag: "3.9"
+
+agentruntime:
+  image:
+    repository: pause
+    tag: "3.9"
+  # The toolchain initContainer runs `sh -c 'cp ...'`; the pause image has no
+  # shell, so disable it for the install smoke. The CLI-layering path is
+  # exercised by the real toolchain image once published.
+  toolchain:
+    enabled: false
