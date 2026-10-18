@@ -62,3 +62,5 @@ list (one-line change in the protection rule).
 Blocked on: agent GitHub credential lacks access to K8sAgentMesh/K8sAgentMesh (403 `Write access not granted`);
 confirmation card pending on ISI-6102 (interaction `47337c8d`), unblock owner: repo admin.
 The ISI-6101 workflow commit (59f27a3) is also waiting on the same push access.
+
+<!-- dco negative probe (ISI-6102): this commit is deliberately unsigned; expect the dco check to fail, then the signoff fix re-push to go green. -->
