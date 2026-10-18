@@ -40,7 +40,10 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
       - name: Resolve chart-matching tag (the chart stamps appVersion v-stripped)
         id: vtag
-        run: echo "app_tag=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+        run: |
+          echo "app_tag=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+          # GHCR namespaces are lowercase; docker rejects uppercase repository names.
+          echo "owner=${GITHUB_REPOSITORY_OWNER,,}" >> "$GITHUB_OUTPUT"
       - name: Build and push
         uses: docker/build-push-action@v7
         with:
@@ -49,10 +52,10 @@ jobs:
           push: true
           provenance: false
           tags: |
-            ghcr.io/${{ github.repository_owner }}/${{ matrix.image.name }}:${{ steps.vtag.outputs.app_tag }}
-            ghcr.io/${{ github.repository_owner }}/${{ matrix.image.name }}:${{ github.ref_name }}
-            ghcr.io/${{ github.repository_owner }}/${{ matrix.image.name }}:latest
-            ghcr.io/${{ github.repository_owner }}/${{ matrix.image.name }}:sha-${{ github.sha }}
+            ghcr.io/${{ steps.vtag.outputs.owner }}/${{ matrix.image.name }}:${{ steps.vtag.outputs.app_tag }}
+            ghcr.io/${{ steps.vtag.outputs.owner }}/${{ matrix.image.name }}:${{ github.ref_name }}
+            ghcr.io/${{ steps.vtag.outputs.owner }}/${{ matrix.image.name }}:latest
+            ghcr.io/${{ steps.vtag.outputs.owner }}/${{ matrix.image.name }}:sha-${{ github.sha }}
           cache-from: type=gha,scope=${{ matrix.image.name }}
           cache-to: type=gha,scope=${{ matrix.image.name }},mode=max
 
