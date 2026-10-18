@@ -1,0 +1,17 @@
+# mesh-gateway — the standalone K8sAgentMesh standing-process gateway
+# (ISI-6158 C3). Built from the repo root:
+#   docker build -f images/Dockerfile.mesh-gateway -t mesh-gateway .
+FROM golang:1.26 AS build
+WORKDIR /src
+COPY go.mod go.sum* ./
+RUN go mod download || true
+COPY . .
+RUN CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /out/mesh-gateway ./cmd/mesh-gateway
+
+FROM gcr.io/distroless/static-debian12:nonroot
+COPY --from=build /out/mesh-gateway /usr/local/bin/mesh-gateway
+# Env contract (see cmd/mesh-gateway): MESH_RUNTIME_TYPE, MESH_MODEL,
+# MESH_POOL_MIN/MAX; credential envs are supplied by the pod seam.
+ENV MESH_RUNTIME_TYPE=vibe
+USER nonroot:nonroot
+ENTRYPOINT ["/usr/local/bin/mesh-gateway"]

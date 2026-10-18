@@ -1,0 +1,36 @@
+{{- if .Values.rbac.create }}
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: {{ include "k8sagentmesh.fullname" . }}
+  labels:
+    {{- include "k8sagentmesh.labels" . | nindent 4 }}
+rules:
+  # Mesh CRDs (installed from crds/ by helm on install/upgrade).
+  - apiGroups: ["mesh.k8sagentmesh.io"]
+    resources: ["meshroutes", "meshtelemetries", "meshpools"]
+    verbs: ["get", "list", "watch", "create", "update", "patch"]
+  # Standing-process supervision substrate.
+  - apiGroups: [""]
+    resources: ["pods", "pods/exec", "events"]
+    verbs: ["get", "list", "watch", "create", "patch"]
+  # Credential seam: names/keys only — never Secret values in logs.
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["get", "list"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: {{ include "k8sagentmesh.fullname" . }}
+  labels:
+    {{- include "k8sagentmesh.labels" . | nindent 4 }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: {{ include "k8sagentmesh.fullname" . }}
+subjects:
+  - kind: ServiceAccount
+    name: {{ include "k8sagentmesh.serviceAccountName" . }}
+    namespace: {{ .Release.Namespace }}
+{{- end }}

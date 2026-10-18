@@ -1,0 +1,16 @@
+apiVersion: v2
+name: k8sagentmesh
+description: |
+  Vanilla K8sAgentMesh install: the standing-process gateway, the
+  per-task agentruntime supervisor, RBAC and the mesh CRDs
+  (ISI-6158 C3). Independent versioning, decoupled from any host
+  project's releases (plan decision D3).
+type: application
+# NOTE: version and appVersion are stamped to the repo tag by the release
+# workflow (.github/workflows/release.yml) — chart version = appVersion =
+# repo tag. Between tags they carry the next-patch dev placeholder.
+version: 0.1.0
+appVersion: "0.1.0"
+kubeVersion: ">=1.29.0-0"
+maintainers:
+  - name: K8sAgentMesh

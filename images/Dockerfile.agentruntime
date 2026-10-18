@@ -1,0 +1,19 @@
+# agentruntime — the per-task NDJSON supervisor of the standalone mesh
+# deploy (ISI-6158 C3). Serves /task NDJSON on stdin/stdout; the runtime
+# flavor is stamped via KSQUAD_RUNTIME_TYPE.
+# The per-task coding-agent CLIs are layered on top of this image (the
+# toolchain-vibe image is the reference substrate) — see deploy/helm.
+FROM golang:1.26 AS build
+WORKDIR /src
+COPY go.mod go.sum* ./
+RUN go mod download || true
+COPY . .
+RUN CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /out/agentruntime ./cmd/agentruntime
+
+FROM debian:bookworm-slim
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends ca-certificates git \
+ && rm -rf /var/lib/apt/lists/*
+COPY --from=build /out/agentruntime /usr/local/bin/agentruntime
+ENV KSQUAD_RUNTIME_TYPE=vibe
+ENTRYPOINT ["/usr/local/bin/agentruntime"]

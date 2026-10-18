@@ -1,0 +1,229 @@
+# MeshPool — the mesh-owned standing-pool CRD contract (P3.8, ISI-6086).
+# Shapes derive from the lifted mechanism: mesh.PoolPlan/GatewayConfig
+# (P3.5/P3.3) and mesh.LifecycleConfig (D4.2). Host #1 (k8squad) keeps RolePool
+# as its source of truth and projects into these semantics via the P3.5
+# SchedulingPolicy seam — this CRD is the host-#2 fallback and the
+# wire-honest description. No controller ships with the module.
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: meshpools.mesh.k8sagentmesh.io
+  labels:
+    app.kubernetes.io/part-of: k8sagentmesh
+spec:
+  group: mesh.k8sagentmesh.io
+  names:
+    plural: meshpools
+    singular: meshpool
+    kind: MeshPool
+    listKind: MeshPoolList
+    shortNames:
+      - mpool
+      - mpools
+  scope: Namespaced
+  versions:
+    - name: v1alpha1
+      served: true
+      storage: true
+      subresources:
+        status: {}
+      additionalPrinterColumns:
+        - name: Team
+          type: string
+          jsonPath: .spec.poolId.team
+        - name: Role
+          type: string
+          jsonPath: .spec.poolId.role
+        - name: Min
+          type: integer
+          jsonPath: .spec.standing.min
+        - name: Max
+          type: integer
+          jsonPath: .spec.standing.max
+        - name: Standing
+          type: integer
+          jsonPath: .status.standing
+      schema:
+        openAPIV3Schema:
+          type: object
+          description: 'MeshPool is the generic standing-process pool: the host-agnostic core of a role pool, minus every host reference. Host-agnostic identity rides poolId; the envelope is resolved values, never host refs.'
+          required: ["spec"]
+          properties:
+            apiVersion:
+              type: string
+              description: APIVersion defines the versioned schema (mesh.k8sagentmesh.io/v1alpha1).
+            kind:
+              type: string
+              description: Kind is the REST resource (MeshPool).
+            metadata:
+              type: object
+              x-kubernetes-preserve-unknown-fields: true
+            spec:
+              type: object
+              required: ["poolId", "envelope", "standing"]
+              properties:
+                poolId:
+                  type: object
+                  description: The opaque (team, role) identity pair the pool serves — the dispatch lookup key. Never a host reference.
+                  required: ["team", "role"]
+                  properties:
+                    team:
+                      type: string
+                      description: The isolation boundary the pool serves.
+                      minLength: 1
+                    role:
+                      type: string
+                      description: The role the pool's processes stand for.
+                      minLength: 1
+                envelope:
+                  type: object
+                  description: The resolved standing envelope (runtime type, model, skills, identity) every process is pre-loaded with — resolved values, not host refs.
+                  required: ["runtimeType"]
+                  properties:
+                    runtimeType:
+                      type: string
+                      description: The coding-agent flavor to spawn (the module RuntimeAdapter set, e.g. "opencode").
+                      minLength: 1
+                    model:
+                      type: string
+                      description: Resolved model id; empty uses the runtime's default.
+                    modelRoute:
+                      type: object
+                      description: Resolved BYO OpenAI-compatible provider seam; empty keeps the runtime's fixed vendor wire.
+                      properties:
+                        endpoint:
+                          type: string
+                          description: OpenAI-compatible base URL (e.g. http://ollama:11434/v1).
+                        model:
+                          type: string
+                          description: Model id/name served at endpoint.
+                        token:
+                          type: string
+                          description: Optional bearer for the endpoint. Secret material — must not be logged.
+                    skills:
+                      type: array
+                      description: Announced skill set surfaced on the agent card.
+                      items:
+                        type: string
+                      x-kubernetes-list-type: set
+                    identity:
+                      type: object
+                      description: Standing agent identity (name/squad/project) stamped on the agent card and telemetry.
+                      required: ["name"]
+                      properties:
+                        name:
+                          type: string
+                          minLength: 1
+                        squad:
+                          type: string
+                        project:
+                          type: string
+                    workDir:
+                      type: string
+                      description: Sandbox working directory; empty uses the host default.
+                    env:
+                      type: object
+                      description: Extra process environment the host layers onto the launched runtime. Values may be secret material — must not be logged.
+                      additionalProperties:
+                        type: string
+                      x-kubernetes-map-type: atomic
+                    source:
+                      type: object
+                      description: Per-process source-checkout layout; absent keeps the plain workDir shape (no source isolation).
+                      required: ["teamMainDir", "worktreeDir", "branch"]
+                      properties:
+                        teamMainDir:
+                          type: string
+                          description: Shared team-main checkout (read-only to the process).
+                        worktreeDir:
+                          type: string
+                          description: Per-process worktree to provision and run in.
+                        branch:
+                          type: string
+                          description: Per-process branch.
+                        baseRef:
+                          type: string
+                          description: Ref branch forks from; empty uses the host default.
+                standing:
+                  type: object
+                  description: The D2.2 target-N band — min is the scheduler floor, max the saturation ceiling. max <= min means no growth band.
+                  required: ["min"]
+                  properties:
+                    min:
+                      type: integer
+                      format: int32
+                      description: Standing process count the pool must hold (values < 1 clamp to 1 at the mechanism).
+                      minimum: 0
+                    max:
+                      type: integer
+                      format: int32
+                      description: Saturation ceiling; 0 or <= min keeps the band-less shape.
+                      minimum: 0
+                saturation:
+                  type: object
+                  description: Busy-everywhere behavior (§5.3 tiers); absent behaves as overflowPolicy "reject".
+                  properties:
+                    overflowPolicy:
+                      type: string
+                      description: '"grow": grow standing toward max, then transient cold-overflow. "reject": ErrNoIdleProcess, no overflow.'
+                      enum: ["grow", "reject"]
+                    growIdleShrink:
+                      type: string
+                      description: How long a saturation-grown slot may stand idle before reclaim (Go duration string, e.g. "2m"). Empty or "0s" defaults to 2m; a negative value disables grown-slot shrinking (the general hibernateToStop bound still applies).
+                      pattern: '^-?([0-9]+(\.[0-9]+)?(ms|s|m|h))+$'
+                lifecycle:
+                  type: object
+                  description: Per-pool D4.2 lifecycle knob set; absent keeps the gateway operator defaults.
+                  properties:
+                    checkInterval:
+                      type: string
+                      description: Gateway state-sweep cadence; empty defaults to 30s.
+                      pattern: '^([0-9]+(\.[0-9]+)?(ms|s|m|h))+$'
+                    hibernate:
+                      type: boolean
+                      description: Arm the S4 two-tier ladder; false (default) keeps the collapsed ladder — the per-pool runtime kill-switch (D9.3).
+                    idleToHibernate:
+                      type: string
+                      description: Idle bound before hibernation (S4 only); empty defaults to 5m.
+                      pattern: '^([0-9]+(\.[0-9]+)?(ms|s|m|h))+$'
+                    hibernateToStop:
+                      type: string
+                      description: Idle/hibernate bound before stop — the RAM reclaim; empty defaults to 4h.
+                      pattern: '^([0-9]+(\.[0-9]+)?(ms|s|m|h))+$'
+                    alwaysUp:
+                      type: boolean
+                      description: Exempt the pool from stop/hibernate (the coordinator role).
+                registration:
+                  type: object
+                  description: Registration heartbeat/TTL pair (P3.4); absent keeps 30s beat / 90s TTL.
+                  properties:
+                    heartbeatInterval:
+                      type: string
+                      description: Registration ticker — each tick re-POSTs the full endpoint set; empty defaults to 30s.
+                      pattern: '^([0-9]+(\.[0-9]+)?(ms|s|m|h))+$'
+                    endpointTtl:
+                      type: string
+                      description: Routability TTL — an endpoint whose last beat aged past it is unroutable; empty defaults to 90s.
+                      pattern: '^([0-9]+(\.[0-9]+)?(ms|s|m|h))+$'
+            status:
+              type: object
+              description: Bounded status read-back (the P3.5 PoolStatusReport shape plus the pool pod) — counts, never per-process lists.
+              properties:
+                standing:
+                  type: integer
+                  format: int32
+                  description: Live standing process count.
+                standingKnown:
+                  type: boolean
+                  description: False when the live-count read failed this pass (the floor is still reconciled).
+                target:
+                  type: integer
+                  format: int32
+                  description: Resolved target-N this pass reconciled toward.
+                pod:
+                  type: string
+                  description: Gateway pod the pool currently runs in.
+                observedGeneration:
+                  type: integer
+                  format: int64
+                  description: Declarative source's generation stamped on the read-back.

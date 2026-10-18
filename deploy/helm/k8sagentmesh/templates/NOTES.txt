@@ -1,0 +1,14 @@
+K8sAgentMesh {{ .Chart.AppVersion }} installed in namespace {{ .Release.Namespace }}.
+
+Standing-process gateway:
+  {{ include "k8sagentmesh.fullname" . }}-gateway.{{ .Release.Namespace }}.svc:{{ .Values.gateway.service.port }}
+  runtime={{ .Values.gateway.runtimeType }} pool={{ .Values.gateway.pool.min }}-{{ .Values.gateway.pool.max }}
+
+Per-task agentruntime supervisor:
+  {{ include "k8sagentmesh.fullname" . }}-agentruntime (runtime={{ .Values.agentruntime.runtimeType }})
+  Serves the /task NDJSON contract; credentials ride the pod env
+  (MISTRAL_API_KEY / OPENAI_API_KEY), never the task channel.
+
+CRDs installed: meshroutes, meshtelemetries, meshpools (mesh.k8sagentmesh.io).
+Next: point a Route at the gateway service, or validate end-to-end with a
+vanilla kind install (ISI-6204).
