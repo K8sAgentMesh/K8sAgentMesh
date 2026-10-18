@@ -1,0 +1,14 @@
+# Keep the build context minimal: only the Go module sources matter.
+.git
+.github
+.claude
+.golangci.yml
+*_test.go
+docs
+brand
+hack
+Dockerfile
+.dockerignore
+README.md
+NOTICE
+LICENSE
