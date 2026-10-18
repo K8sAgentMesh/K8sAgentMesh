@@ -122,6 +122,7 @@ jobs:
         run: |
           set -euo pipefail
           timeout 420 kubectl run lv-vibe --rm -i --restart=Never \
+            --env=KSQUAD_RUNTIME_TYPE=vibe \
             --image=lane-vibe:lv \
             < test/live/tasks/vibe-task.json \
             > artifacts/vibe-transcript.ndjson
@@ -132,6 +133,7 @@ jobs:
         run: |
           set -euo pipefail
           timeout 420 kubectl run lv-codex --rm -i --restart=Never \
+            --env=KSQUAD_RUNTIME_TYPE=codex \
             --image=lane-codex:lv \
             < test/live/tasks/codex-task.json \
             > artifacts/codex-transcript.ndjson
