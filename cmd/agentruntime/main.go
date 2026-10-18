@@ -87,6 +87,10 @@ func credentialEnv(rt agentruntime.Runtime) string {
 		return "MISTRAL_API_KEY"
 	case agentruntime.RuntimeTypeCodex:
 		return "OPENAI_API_KEY"
+	case agentruntime.RuntimeTypeGoose:
+		// The openai BYO lane's key (ISI-6128 spike contract; goose's native
+		// lanes read their own env from the host config).
+		return "OPENAI_API_KEY"
 	}
 	return ""
 }

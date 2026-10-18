@@ -50,7 +50,7 @@ agentruntime:
       tag: ""      # defaults to .Chart.AppVersion
   # -- Credential seam: reference an existing Secret; the key is projected
   # into the runtime-native env var (MISTRAL_API_KEY for vibe,
-  # OPENAI_API_KEY for codex). Never set raw credentials here.
+  # OPENAI_API_KEY for codex and goose). Never set raw credentials here.
   credentials:
     existingSecret: ""        # e.g. mesh-vibe-credentials
     mistralApiKeyKey: mistral-api-key

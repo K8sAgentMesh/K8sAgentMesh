@@ -66,6 +66,9 @@ func credentialType(rt agentruntime.Runtime) string {
 		return agentruntime.CredentialTypeMistral
 	case agentruntime.RuntimeTypeCodex:
 		return agentruntime.CredentialTypeOpenAI
+	case agentruntime.RuntimeTypeGoose:
+		// api-key shape on the OpenAI-compatible BYO lane (ISI-6128 spike).
+		return "api_key"
 	}
 	return "api_key"
 }

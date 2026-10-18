@@ -22,8 +22,10 @@ limitations under the License.
 // sequencing and conformance semantics. Adding a runtime is therefore a new
 // file in this package plus a Register call: zero core change (FR-D3).
 //
-// The v1 shim set registered here is OpenClaw + Hermes (story 5.5) and
-// opencode (story 5.8). Claude Code remains Phase 2 (epics §5, note on 5.5).
+// The engine set registered here is codex (ISI-6203), vibe (ISI-6158) and
+// goose (ISI-6128 P4.2; vanilla-standalone gap closed in ISI-6215);
+// opencode/openclaw/hermes stay host-side until their engines are
+// upstreamed in their own pass.
 
 package agentruntime
 

@@ -23,13 +23,15 @@ import (
 	"github.com/K8sAgentMesh/K8sAgentMesh/a2a"
 )
 
-// TestV1ShimSetRegistered asserts the v1 shim set (stories 5.5 + 5.8) is
-// registered and keyed on the conformant RuntimeType constants (FR-D3).
+// TestV1ShimSetRegistered asserts the registered engine set is keyed on
+// the conformant RuntimeType constants (FR-D3).
 func TestV1ShimSetRegistered(t *testing.T) {
-	// ISI-6203 upstreamed set: codex + vibe; hermes/openclaw/opencode stay
+	// ISI-6203 upstreamed set (codex + vibe) + goose (ISI-6128 P4.2,
+	// vanilla-standalone gap closed ISI-6215); hermes/openclaw/opencode stay
 	// host-side until their own upstream pass.
 	want := []string{
 		RuntimeTypeCodex,
+		RuntimeTypeGoose,
 		RuntimeTypeVibe,
 	}
 	got := Registered()
@@ -92,6 +94,9 @@ func TestCredentialMapping(t *testing.T) {
 		RuntimeTypeCodex: "OPENAI_API_KEY",
 		// vibe speaks the Mistral wire natively (ISI-6158).
 		RuntimeTypeVibe: "MISTRAL_API_KEY",
+		// goose maps onto OPENAI_API_KEY for its OpenAI-compatible BYO lane
+		// (ISI-6128 spike contract; native lanes read their own env).
+		RuntimeTypeGoose: "OPENAI_API_KEY",
 	}
 	for typ, wantVar := range cases {
 		rt, _ := Get(typ)

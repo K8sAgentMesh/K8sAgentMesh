@@ -23,6 +23,10 @@ const (
 	RuntimeTypeCodex = "codex"
 	// RuntimeTypeVibe is Mistral's headless `vibe` coding agent.
 	RuntimeTypeVibe = "vibe"
+	// RuntimeTypeGoose is the goose coding agent (aaif-goose/goose, pinned
+	// v1.55.0 by the ISI-6128 Phase A spike; mesh half =
+	// mesh.NewGooseAdapter, ISI-6197).
+	RuntimeTypeGoose = "goose"
 )
 
 // Credential types advertised on the Agent Card (a2a.AuthInfo.Type): the
