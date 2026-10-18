@@ -1,0 +1,35 @@
+# Dependabot — keeps digest-pinned base images and pinned GitHub Actions fresh
+# (ISI-6212). The root Dockerfile and images/Dockerfile.* pin their FROM refs by
+# @sha256:; without this, those pins silently rot. Dependabot's `docker`
+# ecosystem opens a PR bumping the digest (and the trailing `# tag` comment)
+# whenever the upstream tag moves; `github-actions` does the same for the
+# `uses:` refs in the workflows.
+version: 2
+updates:
+  # Base-image digest pins — root Dockerfile (cmd/meshgw).
+  - package-ecosystem: docker
+    directory: "/"
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: "build(deps)"
+    labels: ["dependencies", "docker"]
+
+  # Base-image digest pins — images/Dockerfile.* (mesh-gateway, agentruntime,
+  # toolchain-vibe; ISI-6203). Dependabot scans every Dockerfile under the dir.
+  - package-ecosystem: docker
+    directory: "/images"
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: "build(deps)"
+    labels: ["dependencies", "docker"]
+
+  # Pinned GitHub Actions in ci.yml / release.yml.
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: "ci(deps)"
+    labels: ["dependencies", "github-actions"]
