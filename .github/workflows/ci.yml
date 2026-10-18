@@ -3,13 +3,17 @@ name: ci
 # Multi-job PR pipeline (ISI-6101, plan from ISI-6095 rev 82afbd79).
 #
 # Required jobs: build, unit, quality, guards, coverage, dco, security-code,
-# security-deps, sbom-cve (branch-protection set).
-# Self-activating stubs: docker, helm, functional — gated on the `detect`
-# job's outputs. `hashFiles()` cannot be used reliably in a job-level `if`
-# (the workspace is empty before checkout, see
+# security-deps, sbom-cve (branch-protection set). `docker` is active and
+# hardened (multi-arch + provenance/SBOM + built-image CVE gate + GHCR publish,
+# ISI-6212) — ready to promote to the required set (see
+# docs/ci-branch-protection.md).
+# Self-activating stubs: helm, functional — gated on the `detect` job's
+# outputs. `hashFiles()` cannot be used reliably in a job-level `if` (the
+# workspace is empty before checkout, see
 # github.com/orgs/community/discussions/25790), so detection runs once in
 # `detect` and the stubs gate on its outputs. They skip cleanly today and
-# activate as soon as the matching Phase 2 artifact lands.
+# activate as soon as the matching Phase 2 artifact lands. `docker` uses the
+# same `detect` gate and is now active because the root Dockerfile is present.
 # Informational: performance (passes while no benchmarks exist).
 
 on:
@@ -293,10 +297,12 @@ jobs:
           path: .
           format: cyclonedx-json
           artifact-name: sbom-cyclonedx.json
-      - name: Grype CVE scan (fails on Critical)
-        # severity-cutoff: critical — high and below are reported but do not
-        # fail the job (accepted CVE policy). Scans the source tree today;
-        # switches to the built image when the docker job activates.
+      - name: Grype CVE scan — source/dependency tree (fails on Critical)
+        # Source + Go-dependency CVE gate (this required check). The
+        # complementary *built-image* gate (base layers + binary) lives in the
+        # `docker` job (ISI-6212), which scans the loaded amd64 image.
+        # severity-cutoff: critical — High and below are reported but do not
+        # fail (accepted CVE policy).
         uses: anchore/scan-action@v7
         with:
           path: .
@@ -340,20 +346,79 @@ jobs:
         run: echo "No benchmarks defined yet — performance job passes informationally."
 
   docker:
-    name: Docker build (buildx, no push)
+    name: Docker build (multi-arch, scan, conditional GHCR push)
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
     needs: detect
     if: needs.detect.outputs.docker == 'true'
+    permissions:
+      contents: read
+      # Needed only for the GHCR push on main/release. PRs are build-only and
+      # never authenticate, so the token's write scope is unused on PR runs.
+      packages: write
     steps:
       - uses: actions/checkout@v7
+      - uses: docker/setup-qemu-action@v3
       - uses: docker/setup-buildx-action@v4
-      - name: Build image (no push)
+
+      # amd64 image loaded into the local daemon purely so Grype can scan the
+      # *built image* (base layers + binary), not the source tree. load: true
+      # is single-platform only; the multi-arch build is a separate step below
+      # and reuses these cached layers (same gha scope).
+      - name: Build amd64 image for scanning (load)
         uses: docker/build-push-action@v7
         with:
           context: .
-          push: false
+          load: true
+          platforms: linux/amd64
           tags: k8sagentmesh:ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      - name: Grype CVE scan of built image (fails on Critical)
+        # The authoritative image-layer CVE gate (base image + binary). The
+        # sbom-cve job keeps the source/dependency-tree gate. severity-cutoff:
+        # critical — High and below are reported but do not fail.
+        uses: anchore/scan-action@v7
+        with:
+          image: k8sagentmesh:ci
+          fail-build: true
+          severity-cutoff: critical
+          output-format: table
+
+      # Tags + OCI labels for the GHCR publish. metadata-action lowercases the
+      # image path, so the mixed-case org resolves to ghcr.io/k8sagentmesh/...
+      - name: Docker metadata (tags + labels)
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository_owner }}/k8sagentmesh
+          tags: |
+            type=sha,format=long
+            type=raw,value=latest,enable={{is_default_branch}}
+      - name: Log in to GHCR (main/release only)
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # Multi-arch build with SLSA provenance + SBOM attestation. push is true
+      # only off-PR (push to main / release); PR runs build both arches but do
+      # not push and carry no credentials — attestations are generated but,
+      # with no push target, simply not stored.
+      - name: Build multi-arch image (push on main/release)
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          provenance: true
+          sbom: true
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
   helm:
     name: Helm lint + ct lint + kubeconform

@@ -41,9 +41,19 @@ Notes for the admin:
 | Check name (job ID) | Activates when | Promote to required when |
 |--------------------|----------------|--------------------------|
 | `performance` | always runs; publishes results only when `Benchmark*` funcs exist | benchmark baselines land (ISI-6106) |
-| `docker` | `detect` finds a `Dockerfile*` (today: skips cleanly) | Docker build hardening lands (ISI-6103) |
+| `docker` | `detect` finds a `Dockerfile*` (**active now** — root `Dockerfile` present) | **now — ready to promote** (hardening landed, ISI-6212) |
 | `helm` | `detect` finds a `Chart.yaml` (today: skips cleanly) | Helm chart lands (ISI-6104) |
 | `functional` | `detect` finds files under `test/integration/` (today: skips cleanly) | envtest suite lands (ISI-6105) |
+
+> **Admin action — promote `docker` to required (ISI-6212).** The `docker` job
+> is now active and hardened: it builds `linux/amd64,linux/arm64` with
+> provenance + SBOM attestation and runs the authoritative **built-image** Grype
+> CVE gate (fail on Critical). On `main`/release it publishes a digest-pinned
+> image to `ghcr.io/<org>/k8sagentmesh`; PRs are build-only (no push). Add
+> `Docker build (multi-arch, scan, conditional GHCR push)` to the required
+> status-check set. The `sbom-cve` required check retains the complementary
+> source/dependency-tree CVE gate, so enforcement never regresses during the
+> rollout.
 
 Rationale: the conditional jobs self-skip today and activate via the `detect` job's outputs when their
 Phase 2 artifacts land. Requiring them prematurely would block all PRs on jobs that cannot exercise
