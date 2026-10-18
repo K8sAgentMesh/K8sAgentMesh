@@ -48,6 +48,19 @@ func TestLoadConfigDefaultsToGoose(t *testing.T) {
 	}
 }
 
+// ISI-6217: vibe is a first-class gateway runtime, registry-backed so the
+// spec values (pinned CLI, capabilities, default model) stay single-sourced
+// with cmd/mesh-gateway and the toolchain image pin.
+func TestNewAdapterVibe(t *testing.T) {
+	ad, err := newAdapter("vibe", "KSQUAD_RUNTIME_TYPE", &mesh.LocalHost{})
+	if err != nil {
+		t.Fatalf("newAdapter(vibe): %v", err)
+	}
+	if ad == nil {
+		t.Fatal("newAdapter(vibe) returned a nil adapter")
+	}
+}
+
 func TestNewAdapterRejectsUnknownRuntime(t *testing.T) {
 	if _, err := newAdapter("nope", "KSQUAD_RUNTIME_TYPE", &mesh.LocalHost{}); err == nil {
 		t.Fatal("newAdapter must reject an unknown runtime flavor")

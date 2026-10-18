@@ -1,4 +1,5 @@
 {{- if .Values.gateway.enabled }}
+{{- $toolchainRepo := .Values.gateway.toolchain.image.repository | default (ternary "toolchain-codex" "toolchain-vibe" (eq .Values.gateway.runtimeType "codex")) }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -28,22 +29,47 @@ spec:
       {{- with .Values.gateway.affinity }}
       affinity: {{- toYaml . | nindent 8 }}
       {{- end }}
+      # The standing band lives in the gateway pod (ISI-6217 gap 1), so the
+      # pinned CLI toolchain is layered here too — same initContainer pattern
+      # as the agentruntime Deployment (images/README.md) — and prepended to
+      # PATH so the band's supervisor children resolve the runtime CLI
+      # (ISI-6217 gap 4).
+      {{- if .Values.gateway.toolchain.enabled }}
+      initContainers:
+        - name: toolchain
+          image: {{ include "k8sagentmesh.image" (dict "registry" .Values.global.image.registry "repository" $toolchainRepo "tag" .Values.gateway.toolchain.image.tag "appVersion" .Chart.AppVersion) }}
+          imagePullPolicy: {{ .Values.global.image.pullPolicy }}
+          command: ["sh", "-c", "cp -r /root/.local /toolchain/.local 2>/dev/null || cp -r /usr/local /toolchain/usr-local 2>/dev/null || true"]
+          volumeMounts:
+            - name: toolchain
+              mountPath: /toolchain
+      volumes:
+        - name: toolchain
+          emptyDir: {}
+      {{- end }}
       containers:
         - name: gateway
           image: {{ include "k8sagentmesh.image" (dict "registry" .Values.global.image.registry "repository" .Values.gateway.image.repository "tag" .Values.gateway.image.tag "appVersion" .Chart.AppVersion) }}
           imagePullPolicy: {{ .Values.global.image.pullPolicy }}
           env:
-            - name: MESH_RUNTIME_TYPE
+            # The meshgw HTTP contract (cmd/meshgw): MESHGW_SHIM_BIN is
+            # preset by the image to the shipped mesh-supervisor; the
+            # runtime/band shape rides these envs.
+            - name: MESHGW_RUNTIME
               value: {{ .Values.gateway.runtimeType | quote }}
-            - name: MESH_AGENT_NAME
-              value: {{ .Values.gateway.agentName | quote }}
-            - name: MESH_POOL_MIN
+            - name: MESHGW_MIN
               value: {{ .Values.gateway.pool.min | quote }}
-            - name: MESH_POOL_MAX
+            - name: MESHGW_MAX
               value: {{ .Values.gateway.pool.max | quote }}
             {{- if .Values.gateway.model }}
-            - name: MESH_MODEL
+            - name: MESHGW_MODEL
               value: {{ .Values.gateway.model | quote }}
+            {{- end }}
+            {{- if .Values.gateway.toolchain.enabled }}
+            # ISI-6217 gap 4: the layered toolchain must lead PATH or the
+            # standing band's CLI would not resolve without extra values.
+            - name: PATH
+              value: "/toolchain/.local/bin:/toolchain/usr-local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
             {{- end }}
             {{- range .Values.extraEnv }}
             - name: {{ .name | quote }}

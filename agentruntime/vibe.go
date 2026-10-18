@@ -25,12 +25,14 @@ import (
 // Single-sourced vibe constants (ISI-6158: the host registry entry values,
 // now mesh-side per D1). The pinned CLI revision, default model and its
 // context-window budget authority live here once and are asserted by unit
-// tests; images/Dockerfile.toolchain-vibe installs exactly vibe==0.3.0 and
-// deploy/helm advertises the same pin.
+// tests; images/Dockerfile.toolchain-vibe installs exactly
+// mistral-vibe==2.9.6 (ISI-6217: the former vibe==0.3.0 pin resolved against
+// no real PyPI package — the CLI ships as mistral-vibe) and the two pins
+// move together or not at all (ADR-017).
 const (
 	// vibeCLIVersion is the pinned headless `vibe` CLI revision the engine
-	// targets (ADR-017 reproducibility). Aligned with the py-v0.3.0 tag.
-	vibeCLIVersion = "py-v0.3.0"
+	// targets (ADR-017 reproducibility): the mistral-vibe==2.9.6 PyPI pin.
+	vibeCLIVersion = "py-v2.9.6"
 	// vibeDefaultModel is Mistral's flagship model the vibe CLI serves.
 	vibeDefaultModel = "mistral-large-latest"
 	// vibeContextWindow is vibeDefaultModel's context-window budget
