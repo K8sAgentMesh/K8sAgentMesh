@@ -57,7 +57,9 @@ spec:
               description: Kind is the REST resource (MeshPool).
             metadata:
               type: object
-              x-kubernetes-preserve-unknown-fields: true
+              properties:
+                name:
+                  type: string
             spec:
               type: object
               required: ["poolId", "envelope", "standing"]
