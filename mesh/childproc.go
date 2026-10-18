@@ -134,7 +134,7 @@ func (a *ChildProcessAdapter) Spawn(ctx context.Context, env Envelope) (Handle, 
 // gateway this is where the supervisor learns the card and persists the
 // endpoint (coord.mesh_endpoint); at this seam it returns the card the process
 // announced at Spawn, which is the authoritative capability contract.
-func (a *ChildProcessAdapter) Register(ctx context.Context, h Handle) (a2a.AgentCard, error) {
+func (a *ChildProcessAdapter) Register(_ context.Context, h Handle) (a2a.AgentCard, error) {
 	ch, err := a.recover(h)
 	if err != nil {
 		return a2a.AgentCard{}, err
@@ -168,7 +168,7 @@ func (a *ChildProcessAdapter) Route(ctx context.Context, h Handle, task a2a.Task
 // near-zero latency with no re-init. It does NOT free RAM — an LLM-idle process
 // already burns no CPU; hibernate's value is instant wake and a clean idleness
 // signal, not a memory win.
-func (a *ChildProcessAdapter) Hibernate(ctx context.Context, h Handle) error {
+func (a *ChildProcessAdapter) Hibernate(_ context.Context, h Handle) error {
 	ch, err := a.recover(h)
 	if err != nil {
 		return err
@@ -184,7 +184,7 @@ func (a *ChildProcessAdapter) Hibernate(ctx context.Context, h Handle) error {
 // Wake resumes a hibernated process with SIGCONT. It is the inverse of
 // Hibernate; a never-hibernated process is unaffected by SIGCONT, so Wake is
 // safe to call defensively.
-func (a *ChildProcessAdapter) Wake(ctx context.Context, h Handle) error {
+func (a *ChildProcessAdapter) Wake(_ context.Context, h Handle) error {
 	ch, err := a.recover(h)
 	if err != nil {
 		return err
@@ -199,7 +199,7 @@ func (a *ChildProcessAdapter) Wake(ctx context.Context, h Handle) error {
 
 // Stop terminates the process and releases its RAM. The host's Close does the
 // graceful SIGTERM→SIGKILL sequence over the process group.
-func (a *ChildProcessAdapter) Stop(ctx context.Context, h Handle) error {
+func (a *ChildProcessAdapter) Stop(_ context.Context, h Handle) error {
 	ch, err := a.recover(h)
 	if err != nil {
 		return err

@@ -28,6 +28,7 @@ limitations under the License.
 // JetStream emitter is a possible implementation #2 later (not in P3); the
 // contract is deliberately transport-agnostic: events carry identity,
 // bounded-vocabulary fields and timings, never a telemetry-SDK type.
+
 package mesh
 
 // ProcessStateSnapshot is the process-state gauge input of the lifecycle-event

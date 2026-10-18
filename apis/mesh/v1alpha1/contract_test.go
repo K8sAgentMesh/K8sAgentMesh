@@ -103,7 +103,7 @@ func TestMeshPoolJSONRoundTrip(t *testing.T) {
 	if !reflect.DeepEqual(in.Status, out.Status) {
 		t.Errorf("status round-trip drifted:\n in  %+v\n out %+v", in.Status, out.Status)
 	}
-	if out.TypeMeta.Kind != KindMeshPool || out.TypeMeta.APIVersion != GroupVersion {
+	if out.Kind != KindMeshPool || out.APIVersion != GroupVersion {
 		t.Errorf("typeMeta round-trip drifted: %+v", out.TypeMeta)
 	}
 }

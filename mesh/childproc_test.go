@@ -76,7 +76,7 @@ type fakeHost struct {
 	sink      TelemetrySink
 }
 
-func (h *fakeHost) Launch(ctx context.Context, spec LaunchSpec) (Instance, error) {
+func (h *fakeHost) Launch(_ context.Context, spec LaunchSpec) (Instance, error) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 	if h.launchErr != nil {
@@ -106,7 +106,7 @@ type fakeRouter struct {
 	err       error
 }
 
-func (r *fakeRouter) Route(ctx context.Context, endpoint string, task a2a.Task) (Stream, error) {
+func (r *fakeRouter) Route(_ context.Context, endpoint string, task a2a.Task) (Stream, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	r.endpoints = append(r.endpoints, endpoint)

@@ -26,6 +26,7 @@ limitations under the License.
 // enforced at the kube mount layer (pkg/sandbox WorkspaceVolumeMounts,
 // workspace-team-main ReadOnly), carried on the POSIX-local substrate as the
 // worktree WorkDir + the KSQUAD_* env contract below.
+
 package mesh
 
 import (

@@ -26,3 +26,8 @@ linters:
         linters:
           - errcheck
           - gosec
+      # Generated deepcopy code (controller-gen output): revive's
+      # exported-comment rule is noise on generated methods.
+      - path: zz_generated.*\.go
+        linters:
+          - revive

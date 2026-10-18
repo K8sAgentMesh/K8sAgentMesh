@@ -42,16 +42,16 @@ import (
 type ProcState string
 
 const (
-	// StateActive: the process is executing a routed task (busy).
+	// StateActive is the state of a process executing a routed task (busy).
 	StateActive ProcState = "active"
-	// StateIdle: the process is standing, routable, and accruing idle time
+	// StateIdle is the state of a process standing, routable, and accruing idle time
 	// toward the stop bound. A fresh spawn enters here (routable immediately —
 	// the P1.1 selection "prefer idle" treats it as the first pick).
 	StateIdle ProcState = "idle"
-	// StateHibernated: SIGSTOP'd, resident, instant wake — S4 (ISI-5831).
+	// StateHibernated is SIGSTOP'd, resident, instant wake — S4 (ISI-5831).
 	// Dark in P1: no gateway transition enters this state (REV-4).
 	StateHibernated ProcState = "hibernated"
-	// StateStopped: terminated — RAM reclaimed. The slot stays on the gateway
+	// StateStopped is terminated — RAM reclaimed. The slot stays on the gateway
 	// so the next A2A request recreates it from the envelope (the ≤3 s
 	// near-bare-exec path); the old Handle is stale.
 	StateStopped ProcState = "stopped"
@@ -123,13 +123,13 @@ func (c LifecycleConfig) WithDefaults() LifecycleConfig {
 type RouteSelection string
 
 const (
-	// SelectionIdle: an existing idle standing process took the task.
+	// SelectionIdle is the selection where an existing idle standing process took the task.
 	SelectionIdle RouteSelection = "idle"
-	// SelectionOverflow: no idle process stood, so a stopped slot was
+	// SelectionOverflow is the selection where no idle process stood, so a stopped slot was
 	// recreated from the envelope on demand (the RAM-reclaim trade: reclaim
 	// when cold, pay the recreate on the next request).
 	SelectionOverflow RouteSelection = "overflow"
-	// SelectionWake: a hibernated process was woken. S4 only (ISI-5831) —
+	// SelectionWake is the selection where a hibernated process was woken. S4 only (ISI-5831) —
 	// never produced in P1; part of the set so the S4 transition changes no
 	// schema.
 	SelectionWake RouteSelection = "wake"
@@ -139,10 +139,10 @@ const (
 type SpawnSource string
 
 const (
-	// SpawnSourceEnvelope: recreate/rebuild from the pre-loaded role envelope
+	// SpawnSourceEnvelope is the recreate/rebuild from the pre-loaded role envelope
 	// — near-bare-exec into already-staged image/tools, the ≤3s target path.
 	SpawnSourceEnvelope SpawnSource = "envelope"
-	// SpawnSourceCold: the gateway's pool-boot spawn (gateway start).
+	// SpawnSourceCold is the gateway's pool-boot spawn (gateway start).
 	SpawnSourceCold SpawnSource = "cold"
 )
 
