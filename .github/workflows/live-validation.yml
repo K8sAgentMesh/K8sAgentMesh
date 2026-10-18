@@ -26,6 +26,11 @@ name: live-validation
 
 on:
   workflow_dispatch: {}
+  pull_request:
+    branches: [main]
+    paths:
+      - ".github/workflows/live-validation.yml"
+      - "test/live/**"
 
 permissions:
   contents: read
