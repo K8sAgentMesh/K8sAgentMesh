@@ -313,11 +313,13 @@ jobs:
           output-format: table
 
   performance:
-    name: Benchmarks (informational)
+    name: Benchmarks (comparison gate)
     runs-on: ubuntu-latest
     timeout-minutes: 20
     permissions:
-      contents: read
+      # contents: write lets the main-branch run push refreshed baselines to the
+      # gh-pages data branch (auto-push). PR runs never push (auto-push: false).
+      contents: write
       pull-requests: write
     steps:
       - uses: actions/checkout@v7
@@ -325,35 +327,58 @@ jobs:
         with:
           go-version-file: go.mod
           cache: false
+      # Pin -cpu=4 so benchmark names always carry the `-4` suffix regardless of
+      # the runner's core count. benchmark-action matches results by full name
+      # (suffix included); a drifting suffix would silently disable the gate by
+      # making every run look like a brand-new benchmark with no baseline.
       - name: Run benchmarks
-        run: go test ./... -run='^$' -bench=. -benchmem -count=1 | tee bench.txt
+        run: go test ./... -run='^$' -bench=. -benchmem -cpu=4 -count=1 | tee bench.txt
       - name: Count benchmark results
         id: bench
         run: |
           count="$(grep -c '^Benchmark' bench.txt || true)"
           echo "count=$count" >> "$GITHUB_OUTPUT"
           echo "Benchmark result lines: $count"
-      # Informational only. benchmark-action@v1 ALWAYS runs `git switch gh-pages`
-      # to store results unless they are kept outside gh-pages — skip-fetch-gh-pages
-      # only skips the fetch, not the switch, so it still died with
-      # "invalid reference: gh-pages" (exit 128). Point it at a local JSON file
-      # (external-data-json-path) so no baseline branch is ever touched, and
-      # render the table into the job summary (summary-always) which needs no
-      # extra token scope. continue-on-error keeps this non-required informational
-      # job from ever blocking a PR. (`fail-on-error` is NOT a valid input for
-      # this action — it was silently ignored.) Graduating to a real comparison
-      # gate (seed gh-pages + auto-push) is ISI-6106 Phase 2.
-      - name: Process benchmark results (informational)
+      # Comparison gate (ISI-6106 Phase 2). Baselines live on the gh-pages data
+      # branch (seeded empty under dev/bench/), generated on CI-runner hardware so
+      # PR numbers are compared against like-for-like hardware — a locally captured
+      # baseline would be invalid across machines.
+      #
+      # PR: fetch the gh-pages baseline, compare, and FAIL the job if any benchmark
+      # regresses past alert-threshold (200% = 2x slower; loose enough to absorb
+      # shared-runner noise, tight enough to catch real regressions). A PR comment
+      # is posted on regression. No push. Until the first main-branch run populates
+      # a baseline, there is no prior data point, so the action fails open (no alert)
+      # — safe by construction.
+      - name: Benchmark comparison gate (PR)
         if: github.event_name == 'pull_request' && steps.bench.outputs.count != '0'
-        continue-on-error: true
         uses: benchmark-action/github-action-benchmark@v1
         with:
           tool: go
           output-file-path: bench.txt
           github-token: ${{ github.token }}
-          external-data-json-path: ./cache/benchmark-data.json
-          summary-always: true
+          gh-pages-branch: gh-pages
+          benchmark-data-dir-path: dev/bench
           auto-push: false
+          save-data-file: false
+          fail-on-alert: true
+          alert-threshold: '200%'
+          comment-on-alert: true
+          summary-always: true
+      # main: store the fresh baseline on gh-pages (auto-push). Never fails the
+      # build — main is the source of truth, not a thing to gate against itself.
+      - name: Store benchmark baseline (main)
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main' && steps.bench.outputs.count != '0'
+        uses: benchmark-action/github-action-benchmark@v1
+        with:
+          tool: go
+          output-file-path: bench.txt
+          github-token: ${{ github.token }}
+          gh-pages-branch: gh-pages
+          benchmark-data-dir-path: dev/bench
+          auto-push: true
+          fail-on-alert: false
+          summary-always: true
       - name: No benchmarks yet
         if: steps.bench.outputs.count == '0'
         run: echo "No benchmarks defined yet — performance job passes informationally."
