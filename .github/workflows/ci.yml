@@ -340,7 +340,14 @@ jobs:
           tool: go
           output-file-path: bench.txt
           github-token: ${{ github.token }}
-          comment-on-alarm: true
+          comment-always: true
+          # No gh-pages baseline branch exists yet, so neither fetch a baseline
+          # (would fail: "couldn't find remote ref gh-pages") nor write one.
+          # This keeps the job informational: it posts current numbers with no
+          # regression comparison. The real comparison gate (fetch + compare +
+          # auto-push baseline on main) is ISI-6106 Phase 2 — see note below.
+          skip-fetch-gh-pages: true
+          save-data-file: false
           auto-push: false
           fail-on-error: false
       - name: No benchmarks yet
