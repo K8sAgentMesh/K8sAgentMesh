@@ -85,9 +85,15 @@ func TestS4_TwoTierLadder_HibernateThenStop(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	// Wait for the SIGSTOP to LAND (hibInFlight cleared), not merely for the
+	// StateHibernated flip: the sweep marks the slot hibernated under the mutex
+	// but increments the adapter's Hibernate counter only when the call returns,
+	// clearing hibInFlight at the same seam. Asserting the count on the bare
+	// state flip races that return and reads 0 under -race load.
 	waitFor(t, 2*time.Second, func() bool {
-		return gw.Processes()[0].State == mesh.StateHibernated
-	}, "process never hibernated past idleToHibernate")
+		p := gw.Processes()[0]
+		return p.State == mesh.StateHibernated && !p.HibernateInFlight
+	}, "process never fully hibernated past idleToHibernate")
 	spy.mu.Lock()
 	h := spy.hibernate
 	spy.mu.Unlock()
