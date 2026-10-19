@@ -340,9 +340,15 @@ jobs:
           tool: go
           output-file-path: bench.txt
           github-token: ${{ github.token }}
-          comment-on-alarm: true
+          # Informational only: post current numbers as a PR comment, never persist
+          # or compare against a gh-pages baseline (that graduation is ISI-6106 / Testing
+          # Architect). skip-fetch-gh-pages avoids the "couldn't find remote ref gh-pages"
+          # crash on repos without a baseline branch.
+          comment-always: true
+          skip-fetch-gh-pages: true
+          save-data-file: false
           auto-push: false
-          fail-on-error: false
+          fail-on-alert: false
       - name: No benchmarks yet
         if: steps.bench.outputs.count == '0'
         run: echo "No benchmarks defined yet — performance job passes informationally."
