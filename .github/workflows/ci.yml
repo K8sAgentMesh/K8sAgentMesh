@@ -333,21 +333,27 @@ jobs:
           count="$(grep -c '^Benchmark' bench.txt || true)"
           echo "count=$count" >> "$GITHUB_OUTPUT"
           echo "Benchmark result lines: $count"
-      # Informational only: no gh-pages baseline branch exists yet, so skip the
-      # baseline fetch and data-file write that would otherwise fail with
-      # "couldn't find remote ref gh-pages" (exit 128). Graduating this to a real
-      # comparison gate (seed gh-pages + auto-push) is ISI-6106 Phase 2.
+      # Informational only. benchmark-action@v1 ALWAYS runs `git switch gh-pages`
+      # to store results unless they are kept outside gh-pages — skip-fetch-gh-pages
+      # only skips the fetch, not the switch, so it still died with
+      # "invalid reference: gh-pages" (exit 128). Point it at a local JSON file
+      # (external-data-json-path) so no baseline branch is ever touched, and
+      # render the table into the job summary (summary-always) which needs no
+      # extra token scope. continue-on-error keeps this non-required informational
+      # job from ever blocking a PR. (`fail-on-error` is NOT a valid input for
+      # this action — it was silently ignored.) Graduating to a real comparison
+      # gate (seed gh-pages + auto-push) is ISI-6106 Phase 2.
       - name: Process benchmark results (informational)
         if: github.event_name == 'pull_request' && steps.bench.outputs.count != '0'
+        continue-on-error: true
         uses: benchmark-action/github-action-benchmark@v1
         with:
           tool: go
           output-file-path: bench.txt
           github-token: ${{ github.token }}
+          external-data-json-path: ./cache/benchmark-data.json
+          summary-always: true
           auto-push: false
-          fail-on-error: false
-          skip-fetch-gh-pages: true
-          save-data-file: false
       - name: No benchmarks yet
         if: steps.bench.outputs.count == '0'
         run: echo "No benchmarks defined yet — performance job passes informationally."
