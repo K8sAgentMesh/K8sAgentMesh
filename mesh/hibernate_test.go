@@ -51,6 +51,21 @@ func armedLifecycle() mesh.LifecycleConfig {
 	}
 }
 
+// armedWakeLifecycle is armedLifecycle with the stop tier pushed far out of
+// reach. The wake-from-hibernated tests observe StateHibernated via waitFor and
+// THEN route to exercise the SIGCONT path; with the tiny 150ms stop bound a
+// loaded runner (notably `go test -race` under CI contention) can let the sweep
+// flip the process STOPPED in the gap between the observe and the route, and
+// the wake tier then finds nothing to wake ("no idle process in pool"). A long
+// HibernateToStop keeps the process parked in HIBERNATED until the route wakes
+// it — deterministic, no sleeps — while idleToHibernate stays tiny so the
+// process still hibernates promptly.
+func armedWakeLifecycle() mesh.LifecycleConfig {
+	lc := armedLifecycle()
+	lc.HibernateToStop = 10 * time.Second
+	return lc
+}
+
 // TestS4_TwoTierLadder_HibernateThenStop walks the full armed ladder:
 // IDLE → (idleToHibernate) HIBERNATED → (hibernateToStop measured from the
 // HIBERNATE instant, not from idle) STOPPED. The stop-from-hibernated leg
@@ -193,7 +208,7 @@ func TestS4_RouteWakesHibernated(t *testing.T) {
 	obs := &obsRecorder{}
 	gw, err := mesh.NewGateway(mesh.GatewayConfig{
 		Adapter: spy, Envelope: hibEnv(), Min: 1,
-		Lifecycle: armedLifecycle(), Observer: obs,
+		Lifecycle: armedWakeLifecycle(), Observer: obs,
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -204,9 +219,15 @@ func TestS4_RouteWakesHibernated(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	// Wait for the SIGSTOP to LAND, not merely for the state flip: the sweep
+	// marks StateHibernated under the mutex but clears hibInFlight only after
+	// the adapter Hibernate returns, and the wake tier refuses a route inside
+	// that window. Routing on the bare state flip races the landing (flakes
+	// hard under -race) — the wakeable signal is hibernated AND not in-flight.
 	waitFor(t, 2*time.Second, func() bool {
-		return gw.Processes()[0].State == mesh.StateHibernated
-	}, "process never hibernated")
+		p := gw.Processes()[0]
+		return p.State == mesh.StateHibernated && !p.HibernateInFlight
+	}, "process never fully hibernated")
 
 	s, err := gw.Route(context.Background(), "", a2a.Task{A2ATaskID: "t-wake"})
 	if err != nil {
@@ -315,7 +336,7 @@ func TestS4_RebindAtWake(t *testing.T) {
 	obs := &obsRecorder{}
 	gw, err := mesh.NewGateway(mesh.GatewayConfig{
 		Adapter: spy, Envelope: hibEnv(), Min: 1,
-		Lifecycle: armedLifecycle(), Observer: obs,
+		Lifecycle: armedWakeLifecycle(), Observer: obs,
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -325,9 +346,14 @@ func TestS4_RebindAtWake(t *testing.T) {
 	if err := gw.Start(ctx); err != nil {
 		t.Fatal(err)
 	}
+	// Wait for the SIGSTOP to LAND (hibInFlight cleared), not merely for the
+	// StateHibernated flip: the wake tier skips an in-flight slot, so routing
+	// on the bare state flip races the adapter Hibernate return and flakes
+	// under -race with "no idle process in pool".
 	waitFor(t, 2*time.Second, func() bool {
-		return gw.Processes()[0].State == mesh.StateHibernated
-	}, "process never hibernated")
+		p := gw.Processes()[0]
+		return p.State == mesh.StateHibernated && !p.HibernateInFlight
+	}, "process never fully hibernated")
 
 	// The role's model moved while the process slept (the S4 drift source).
 	moved := hibEnv()
