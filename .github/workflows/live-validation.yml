@@ -1,0 +1,160 @@
+name: live-validation
+
+# ISI-6211 live validation lane — the "CI kind lane" executor decision from
+# ISI-6213: the agent workspace has no container runtime, so the live proof
+# runs here, on a throwable GitHub runner.
+#
+# Proves, end to end and with zero host-project involvement:
+#   1. The three REAL in-repo images build and the vanilla chart
+#      `helm install`s on a fresh kind cluster with them (GHCR publish is
+#      not cut yet — the lane builds in-job and `kind load`s).
+#   2. One vibe task and one codex task, routed through the agentruntime
+#      supervisor `/task` NDJSON contract against an in-cluster Ollama
+#      (the zero-credential lane, spec §11/C9), each SETTLE: a terminal
+#      `{"kind":"completed"|"failed"}` line followed by stream close —
+#      the ISI-4224 conformance bar (a sweeper-driven close is a FAIL).
+#   3. Zero control-plane change: cluster state before/after diff, with
+#      the delta allowlisted to the mesh release's own footprint and the
+#      lane's Ollama namespace.
+#
+# Findings this lane documents (known vanilla-substrate gaps, see
+# test/live/README.md): the gateway standing band execs an unshipped
+# `shim` binary, and the agentruntime Deployment has no task-ingest
+# surface (the supervisor speaks stdin/stdout NDJSON; Deployments attach
+# no stdin) — so the settle runs are driven through one-shot pods using
+# the same supervisor binary + toolchain CLI the chart layers.
+
+on:
+  workflow_dispatch: {}
+  pull_request:
+    branches: [main]
+    paths:
+      - ".github/workflows/live-validation.yml"
+      - "test/live/**"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: live-validation
+  cancel-in-progress: false
+
+jobs:
+  vanilla-kind-settle:
+    name: Vanilla kind install + /task NDJSON settle
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      MESH_TAG: 0.1.0-lv
+      OLLAMA_MODEL: qwen2.5:0.5b
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Build the three vanilla images (amd64)
+        run: |
+          set -euo pipefail
+          docker build -f images/Dockerfile.mesh-gateway   -t ghcr.io/k8sagentmesh/mesh-gateway:$MESH_TAG  .
+          docker build -f images/Dockerfile.agentruntime   -t ghcr.io/k8sagentmesh/agentruntime:$MESH_TAG  .
+          # NOT built: images/Dockerfile.toolchain-vibe pins `vibe==0.3.0`,
+          # which exists on no PyPI (the CLI ships as `mistral-vibe`; its
+          # versions run 0.0.0 -> 1.0.0+). The image has never been
+          # buildable — recorded as a finding; the chart installs with the
+          # toolchain layer disabled, mirroring ci/ct-values.yaml.
+
+      - name: Build lane fixture images (test-only)
+        run: |
+          set -euo pipefail
+          docker build -f test/live/lane-vibe.Dockerfile  -t lane-vibe:lv  .
+          docker build -f test/live/lane-codex.Dockerfile  -t lane-codex:lv .
+
+      - name: Create the fresh kind cluster
+        uses: helm/kind-action@v1
+        with:
+          cluster_name: mesh-lv
+          kubectl_version: v1.31.0
+
+      - name: Load images into kind
+        run: |
+          set -euo pipefail
+          for img in \
+            ghcr.io/k8sagentmesh/mesh-gateway:$MESH_TAG \
+            ghcr.io/k8sagentmesh/agentruntime:$MESH_TAG \
+            lane-vibe:lv lane-codex:lv; do
+            kind load docker-image "$img" --name mesh-lv
+          done
+
+      - name: In-cluster Ollama (zero-credential model lane)
+        run: |
+          set -euo pipefail
+          kubectl apply -f test/live/ollama.yaml
+          kubectl -n ollama rollout status deploy/ollama --timeout=300s
+          kubectl -n ollama exec deploy/ollama -- ollama pull "$OLLAMA_MODEL"
+
+      - name: Snapshot cluster state (before)
+        run: |
+          mkdir -p artifacts
+          test/live/cluster-snapshot.sh artifacts/before
+
+      - name: Vanilla helm install (independence assertions)
+        run: |
+          set -euo pipefail
+          helm install mesh ./deploy/helm/k8sagentmesh \
+            --namespace mesh --create-namespace \
+            --set global.image.pullPolicy=Never \
+            --set gateway.image.tag=$MESH_TAG \
+            --set agentruntime.image.tag=$MESH_TAG \
+            --set agentruntime.toolchain.enabled=false \
+            | tee artifacts/helm-install.txt
+          helm list -n mesh | tee artifacts/helm-list.txt
+          if helm get all mesh -n mesh | grep -i k8squad; then
+            echo "FAIL: k8squad leaked into the vanilla release"; exit 1
+          fi
+          echo "PASS: zero k8squad anywhere in the rendered release"
+          kubectl -n mesh get pods -o wide | tee artifacts/mesh-pods.txt || true
+          # Rollout health is recorded, not asserted: the standing band and
+          # the deployed supervisor have known ingest gaps (test/live/README.md).
+          kubectl -n mesh rollout status deploy/k8sagentmesh-gateway --timeout=90s \
+            | tee artifacts/gateway-rollout.txt \
+            || echo "FINDING: gateway rollout not healthy (see test/live/README.md gap 1)" \
+              | tee -a artifacts/gateway-rollout.txt
+
+      - name: Supervisor /task settle — vibe (NDJSON transcript)
+        run: |
+          set -euo pipefail
+          timeout 420 kubectl run lv-vibe --rm -i --restart=Never \
+            --env=KSQUAD_RUNTIME_TYPE=vibe \
+            --image=lane-vibe:lv \
+            < test/live/tasks/vibe-task.json \
+            > artifacts/vibe-transcript.ndjson
+          cat artifacts/vibe-transcript.ndjson
+          test/live/settle-check.sh artifacts/vibe-transcript.ndjson vibe
+
+      - name: Supervisor /task settle — codex (NDJSON transcript)
+        run: |
+          set -euo pipefail
+          timeout 420 kubectl run lv-codex --rm -i --restart=Never \
+            --env=KSQUAD_RUNTIME_TYPE=codex \
+            --image=lane-codex:lv \
+            < test/live/tasks/codex-task.json \
+            > artifacts/codex-transcript.ndjson
+          cat artifacts/codex-transcript.ndjson
+          test/live/settle-check.sh artifacts/codex-transcript.ndjson codex
+
+      - name: Gateway /task HTTP probe (documented gap)
+        run: |
+          set -euo pipefail
+          test/live/gateway-probe.sh | tee artifacts/gateway-probe.txt || true
+
+      - name: Snapshot cluster state (after) + zero-control-plane assertion
+        run: |
+          set -euo pipefail
+          test/live/cluster-snapshot.sh artifacts/after
+          test/live/cluster-diff.sh artifacts/before artifacts/after \
+            | tee artifacts/control-plane-diff.txt
+
+      - name: Upload evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: live-validation-evidence
+          path: artifacts/

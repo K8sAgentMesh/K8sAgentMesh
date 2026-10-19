@@ -27,9 +27,38 @@ RBAC and the mesh CRDs. No host project required — images come from
   into the runtime-native env var (`MISTRAL_API_KEY` for vibe,
   `OPENAI_API_KEY` for codex). Raw credentials never go through values.
 
+## Model backend
+
+**The default path is BYO: point the mesh at your own OpenAI-compatible
+endpoint.** Set `agentruntime.modelRoute.endpoint` to any OpenAI-compatible
+`/v1` base URL and supply the API key through a Secret
+(`agentruntime.credentials.existingSecret`). Leaving `endpoint` empty (the
+default) keeps the runtime on its native default — Mistral for `vibe`
+(`MISTRAL_API_KEY`), OpenAI for `codex` (`OPENAI_API_KEY`). No model backend
+is bundled in the chart.
+
+| Provider | `modelRoute.endpoint` | Credential |
+|---|---|---|
+| **OpenAI** | `https://api.openai.com/v1` | `OPENAI_API_KEY` via `existingSecret` |
+| **Anthropic** | an OpenAI-compatible proxy, e.g. LiteLLM: `http://litellm.llm.svc:4000/v1` | key held by the proxy (the mesh speaks only the OpenAI wire — the proxy hop is required) |
+| **Ollama (external / self-hosted)** | `http://<your-ollama-host>:11434/v1` | none |
+| **Ollama (in-cluster)** | `http://ollama.ollama.svc:11434/v1` | none — **optional local demo only; slow, not for production** |
+
+The chart ships **no** in-cluster Ollama; bringing one up is an explicit,
+opt-in choice for local demos. (The CI `live-validation` lane does run an
+in-cluster Ollama, but that is a test-only zero-credential convenience — see
+`test/live/README.md` — never the product default.)
+
 ## Quick start
 
 ```sh
+# BYO OpenAI-compatible endpoint (recommended):
+helm install mesh deploy/helm/k8sagentmesh \
+  --set agentruntime.modelRoute.endpoint=https://api.openai.com/v1 \
+  --set agentruntime.modelRoute.model=gpt-4o-mini \
+  --set agentruntime.credentials.existingSecret=my-openai-creds
+
+# …or stay on the runtime's native default (vibe → Mistral):
 helm install mesh deploy/helm/k8sagentmesh \
   --set agentruntime.credentials.existingSecret=my-mistral-creds
 ```

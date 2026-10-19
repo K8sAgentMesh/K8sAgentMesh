@@ -52,10 +52,27 @@ agentruntime:
   # HTTP supervisor — the task-ingest surface). Test lanes swapping in a
   # stand-in image (see ci/ct-values.yaml) override this.
   command: ["/usr/local/bin/mesh-supervisor"]
-  # -- Optional BYO OpenAI-compatible model route (e.g. an Ollama lane).
+  # -- BYO OpenAI-compatible model route. This is the recommended way to
+  # point the mesh at a model: set `endpoint` to any OpenAI-compatible
+  # `/v1` base URL and supply the key via `credentials.existingSecret`
+  # (below). Empty `endpoint` (the default) leaves the runtime on its
+  # native default (Mistral for vibe via MISTRAL_API_KEY, OpenAI for
+  # codex via OPENAI_API_KEY). Provider examples:
+  #   OpenAI            endpoint: https://api.openai.com/v1
+  #                     (OPENAI_API_KEY via credentials.existingSecret)
+  #   Anthropic         via an OpenAI-compatible proxy (e.g. LiteLLM):
+  #                     endpoint: http://litellm.llm.svc:4000/v1
+  #                     (the proxy holds the Anthropic key; the mesh speaks
+  #                      only the OpenAI wire — there is no direct Anthropic
+  #                      route, the proxy hop is required)
+  #   Ollama (external) endpoint: http://<your-ollama-host>:11434/v1
+  #   Ollama (in-cluster) optional LOCAL DEMO only — slow, not for
+  #                     production; the chart ships none (bring your own),
+  #                     and the CI live-validation lane's in-cluster Ollama
+  #                     is a test-only zero-credential convenience.
   modelRoute:
-    endpoint: ""   # e.g. http://ollama.ollama.svc:11434/v1
-    model: ""
+    endpoint: ""   # OpenAI-compatible /v1 base URL; empty = runtime default
+    model: ""      # model id at that endpoint (e.g. gpt-4o-mini, qwen2.5)
   # -- Task-ingest Service fronting the supervisor's POST /task NDJSON
   # surface (ISI-6217 gap 2).
   service:

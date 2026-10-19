@@ -605,6 +605,13 @@ type ProcessInfo struct {
 	// Recreate (route-driven) or torn down via Stop (sweep-driven). A stopped
 	// slot with Recreating=true is in-flight and not yet ready for a new route.
 	Recreating bool
+	// HibernateInFlight reports that the slot has left IDLE for HIBERNATED but
+	// its SIGSTOP has not landed yet (the sweep decided, the adapter Hibernate
+	// call is in flight). The wake tier skips such a slot — a SIGCONT racing
+	// ahead of the SIGSTOP would freeze a process mid-delivery — so a route
+	// during this window refuses (409). A process is fully frozen and wakeable
+	// only once State==Hibernated AND HibernateInFlight==false.
+	HibernateInFlight bool
 }
 
 // Processes snapshots the pool's slot set (id, endpoint, card, busy, state).
@@ -614,13 +621,14 @@ func (g *Gateway) Processes() []ProcessInfo {
 	out := make([]ProcessInfo, 0, len(g.procs))
 	for _, p := range g.procs {
 		out = append(out, ProcessInfo{
-			EndpointID: p.handle.ID(),
-			Endpoint:   p.handle.Endpoint(),
-			Card:       p.card,
-			Busy:       p.busy,
-			State:      p.state,
-			Grown:      p.grown,
-			Recreating: p.recreating,
+			EndpointID:        p.handle.ID(),
+			Endpoint:          p.handle.Endpoint(),
+			Card:              p.card,
+			Busy:              p.busy,
+			State:             p.state,
+			Grown:             p.grown,
+			Recreating:        p.recreating,
+			HibernateInFlight: p.hibInFlight,
 		})
 	}
 	return out

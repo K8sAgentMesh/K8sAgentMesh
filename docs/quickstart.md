@@ -66,6 +66,37 @@ ingest surface, same toolchain layering), a ServiceAccount +
 ClusterRole/Binding for the mesh CRDs, and the three CRDs (`meshpools`,
 `meshroutes`, `meshtelemetries`). Nothing else.
 
+## Choosing a model backend
+
+**The default, recommended path is BYO: point the mesh at your own
+OpenAI-compatible endpoint.** Set `agentruntime.modelRoute.endpoint` to an
+OpenAI-compatible `/v1` base URL and supply the API key via a Secret
+(`agentruntime.credentials.existingSecret`). Left empty (the default), the
+runtime stays on its native backend — Mistral for `vibe`, OpenAI for `codex`.
+The chart bundles **no** model backend.
+
+| Provider | `modelRoute.endpoint` | Credential |
+|---|---|---|
+| **OpenAI** | `https://api.openai.com/v1` | `OPENAI_API_KEY` via `existingSecret` |
+| **Anthropic** | an OpenAI-compatible proxy, e.g. LiteLLM: `http://litellm.llm.svc:4000/v1` | key held by the proxy — the mesh speaks only the OpenAI wire, so the proxy hop is required |
+| **Ollama (external / self-hosted)** | `http://<your-ollama-host>:11434/v1` | none |
+| **Ollama (in-cluster)** | `http://ollama.ollama.svc:11434/v1` | none — **optional local demo only; slow, not for production** |
+
+For example, to install against OpenAI:
+
+```sh
+helm install mesh ./deploy/helm/k8sagentmesh \
+  --namespace mesh --create-namespace --wait \
+  --set agentruntime.modelRoute.endpoint=https://api.openai.com/v1 \
+  --set agentruntime.modelRoute.model=gpt-4o-mini \
+  --set agentruntime.credentials.existingSecret=my-openai-creds
+```
+
+In-cluster Ollama is strictly opt-in: the chart ships none, and you stand one
+up yourself only for a local demo. (The CI `live-validation` lane runs an
+in-cluster Ollama as a zero-credential test convenience — never the product
+default; see `test/live/README.md`.)
+
 ## 3. First `/task` NDJSON round-trip
 
 The supervisor serves the A2A `/task` contract as a newline-delimited JSON
