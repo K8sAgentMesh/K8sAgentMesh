@@ -47,8 +47,30 @@ func TestCodexResolves(t *testing.T) {
 	}
 }
 
+// ISI-6217: the D4 wrapper binary name is env-overridable so a host with its
+// own wrapper (the k8squad ksquad-codex-exec) keeps its name without
+// forking the engine; the default is the vendored mesh-codex-exec.
+func TestCodexExecWrapperEnvOverride(t *testing.T) {
+	rt, _ := Get(RuntimeTypeCodex)
+	spec, err := rt.Command(LaunchContext{WorkDir: "/work/run-1"})
+	if err != nil {
+		t.Fatalf("Command failed: %v", err)
+	}
+	if spec.Path != "mesh-codex-exec" {
+		t.Fatalf("default Path = %q, want mesh-codex-exec", spec.Path)
+	}
+	t.Setenv("MESH_CODEX_EXEC_BIN", "ksquad-codex-exec")
+	spec, err = rt.Command(LaunchContext{WorkDir: "/work/run-1"})
+	if err != nil {
+		t.Fatalf("Command with override failed: %v", err)
+	}
+	if spec.Path != "ksquad-codex-exec" {
+		t.Errorf("overridden Path = %q, want ksquad-codex-exec", spec.Path)
+	}
+}
+
 // AC3 (ISI-3654): codex.Command() builds the pinned Codex ExecSpec — the
-// ksquad-codex-exec wrapper (D4), the fixed flag set, credential mapped onto
+// mesh-codex-exec wrapper (D4), the fixed flag set, credential mapped onto
 // OPENAI_API_KEY + CODEX_HOME, and the envelope/credential kept out of argv.
 func TestCodexCommandExecSpec(t *testing.T) {
 	rt, _ := Get(RuntimeTypeCodex)
@@ -62,8 +84,8 @@ func TestCodexCommandExecSpec(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Command failed: %v", err)
 	}
-	if spec.Path != "ksquad-codex-exec" {
-		t.Errorf("Path = %q, want ksquad-codex-exec (D4 stdin wrapper)", spec.Path)
+	if spec.Path != "mesh-codex-exec" {
+		t.Errorf("Path = %q, want mesh-codex-exec (D4 stdin wrapper)", spec.Path)
 	}
 	if spec.WorkDir != "/work/run-1" {
 		t.Errorf("WorkDir = %q, want /work/run-1", spec.WorkDir)

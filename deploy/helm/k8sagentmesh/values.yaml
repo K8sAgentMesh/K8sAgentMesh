@@ -1,4 +1,5 @@
-# Default values for the vanilla k8sagentmesh chart (ISI-6158 C3).
+# Default values for the vanilla k8sagentmesh chart (ISI-6158 C3;
+# ingest surface + toolchain PATH closed in ISI-6217).
 
 # -- Global image settings. Tags left empty default to the chart's
 # appVersion (the repo tag the release workflow stamps).
@@ -7,7 +8,8 @@ global:
     registry: ghcr.io/k8sagentmesh
     pullPolicy: IfNotPresent
 
-# -- Standing-process gateway (cmd/mesh-gateway).
+# -- Standing-process gateway (cmd/meshgw, HTTP /task entrypoint) launching
+# the mesh-owned standing supervisor (cmd/mesh-supervisor) per band slot.
 gateway:
   enabled: true
   replicaCount: 1
@@ -16,10 +18,17 @@ gateway:
     tag: ""        # defaults to .Chart.AppVersion
   runtimeType: vibe
   model: ""        # optional envelope model override
-  agentName: mesh-gateway
   pool:
     min: 1
     max: 1
+  # -- Toolchain layer for the standing band: the gateway pod hosts the
+  # band, so the pinned CLI substrate (vibe or codex) is copied onto the
+  # pod by an initContainer and prepended to PATH (ISI-6217 gaps 1+4).
+  toolchain:
+    enabled: true
+    image:
+      repository: ""   # defaults by runtimeType: toolchain-vibe | toolchain-codex
+      tag: ""          # defaults to .Chart.AppVersion
   resources: {}
   nodeSelector: {}
   tolerations: []
@@ -28,7 +37,9 @@ gateway:
     type: ClusterIP
     port: 8080
 
-# -- Per-task agentruntime supervisor (cmd/agentruntime).
+# -- Per-task agentruntime supervisor (cmd/mesh-supervisor behind a Service:
+# the deployed task-ingest surface; cmd/agentruntime stays shipped for
+# one-shot stdio lanes).
 agentruntime:
   enabled: true
   replicaCount: 1
@@ -37,17 +48,26 @@ agentruntime:
     tag: ""        # defaults to .Chart.AppVersion
   runtimeType: vibe
   model: ""        # optional VIBE_ACTIVE_MODEL pin override
+  # -- Supervisor entrypoint the deployed pod runs (default: the standing
+  # HTTP supervisor — the task-ingest surface). Test lanes swapping in a
+  # stand-in image (see ci/ct-values.yaml) override this.
+  command: ["/usr/local/bin/mesh-supervisor"]
   # -- Optional BYO OpenAI-compatible model route (e.g. an Ollama lane).
   modelRoute:
     endpoint: ""   # e.g. http://ollama.ollama.svc:11434/v1
     model: ""
+  # -- Task-ingest Service fronting the supervisor's POST /task NDJSON
+  # surface (ISI-6217 gap 2).
+  service:
+    type: ClusterIP
+    port: 8080
   # -- Toolchain layer: the pinned CLI substrate image copied onto the
   # supervisor's PATH by an initContainer (see images/README.md).
   toolchain:
     enabled: true
     image:
-      repository: toolchain-vibe
-      tag: ""      # defaults to .Chart.AppVersion
+      repository: ""   # defaults by runtimeType: toolchain-vibe | toolchain-codex
+      tag: ""          # defaults to .Chart.AppVersion
   # -- Credential seam: reference an existing Secret; the key is projected
   # into the runtime-native env var (MISTRAL_API_KEY for vibe,
   # OPENAI_API_KEY for codex and goose). Never set raw credentials here.

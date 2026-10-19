@@ -30,7 +30,7 @@ limitations under the License.
 //
 // The runtime served is goose (adapter #4, ISI-6197) by default, wired behind
 // RuntimeAdapter so the gateway never names it. Select another built-in runtime
-// (opencode / codex) via MESHGW_RUNTIME; adding one is a new spec, no
+// (vibe / opencode / codex) via MESHGW_RUNTIME; adding one is a new spec, no
 // change here.
 //
 // HTTP control surface:
@@ -67,6 +67,7 @@ import (
 	"time"
 
 	"github.com/K8sAgentMesh/K8sAgentMesh/a2a"
+	"github.com/K8sAgentMesh/K8sAgentMesh/agentruntime"
 	"github.com/K8sAgentMesh/K8sAgentMesh/mesh"
 )
 
@@ -226,6 +227,8 @@ func loadConfig() (config, error) {
 // richer specs, but the gateway seam is identical.
 func newAdapter(runtimeType, runtimeEnvKey string, host mesh.PlatformHost) (mesh.RuntimeAdapter, error) {
 	switch runtimeType {
+	case "vibe":
+		return vibeAdapter(runtimeEnvKey, host)
 	case "goose":
 		return mesh.NewGooseAdapter(host, gooseSpec(runtimeEnvKey))
 	case "opencode":
@@ -233,8 +236,30 @@ func newAdapter(runtimeType, runtimeEnvKey string, host mesh.PlatformHost) (mesh
 	case "codex":
 		return mesh.NewCodexAdapter(host, baseSpec("codex", runtimeEnvKey))
 	default:
-		return nil, fmt.Errorf("unknown %s=%q (want goose|opencode|codex)", envRuntime, runtimeType)
+		return nil, fmt.Errorf("unknown %s=%q (want vibe|goose|opencode|codex)", envRuntime, runtimeType)
 	}
+}
+
+// vibeAdapter builds the registry-backed vibe adapter (ISI-6217 gap 1's
+// vanilla story): the spec values (pinned CLI revision, capabilities,
+// default model, mistral credential type) are single-sourced from the
+// agentruntime registry — the same source of truth cmd/mesh-gateway reads —
+// instead of a second hand-maintained profile.
+func vibeAdapter(runtimeEnvKey string, host mesh.PlatformHost) (mesh.RuntimeAdapter, error) {
+	rt, err := agentruntime.Get(agentruntime.RuntimeTypeVibe)
+	if err != nil {
+		return nil, err
+	}
+	return mesh.NewVibeAdapter(host, mesh.RuntimeSpec{
+		Type:           rt.Type(),
+		CLIVersion:     rt.CLIVersion(),
+		Capabilities:   rt.Capabilities(),
+		DefaultModel:   rt.DefaultModel(),
+		CredentialType: agentruntime.CredentialTypeMistral,
+		SchemaVersion:  a2a.DefaultSchemaVersion,
+		Protocol:       a2a.ProtocolVersions{A2A: "0.2.0", MCP: "2025-06-18"},
+		RuntimeTypeEnv: runtimeEnvKey,
+	})
 }
 
 // gooseSpec is the goose runtime profile (ISI-6197): the spike-proven surface —

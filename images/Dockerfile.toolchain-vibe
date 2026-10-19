@@ -2,11 +2,11 @@
 # depends on (ISI-6158 C3). The CLI ships on PyPI as `mistral-vibe`
 # (versions 0.0.0 then 1.0.0+; there is no `vibe==0.3.0` anywhere), so the
 # buildable pin is mistral-vibe==2.9.6 — the exact substrate the ISI-6211
-# live-validation lane settled a real vibe task on. NOTE: the engine still
-# advertises CLIVersion py-v0.3.0 (agentruntime/vibe.go, ADR-017);
-# realigning that seam with the shipped substrate is follow-up work.
-# The codex toolchain image is an optional follow-up (plan decision D2).
-FROM python:3.12-slim
+# live-validation lane settled a real vibe task on. The engine advertises
+# the matching CLIVersion py-v2.9.6 (agentruntime/vibe.go, ADR-017); bump
+# them together or not at all. The codex toolchain image ships alongside
+# this one (images/Dockerfile.toolchain-codex, ISI-6217).
+FROM python:3.14-slim
 
 RUN apt-get update \
  && apt-get install -y --no-install-recommends ca-certificates git curl ripgrep \

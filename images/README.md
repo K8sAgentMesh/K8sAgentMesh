@@ -1,17 +1,36 @@
-# images/ — K8sAgentMesh OCI images (ISI-6158 C3)
+# images/ — the vanilla substrate images (ISI-6217)
 
-Tag-driven CI (`.github/workflows/release.yml`) builds and pushes these to
-`ghcr.io/K8sAgentMesh/*` on `vX.Y.Z` tags. Versioning is independent of any
-host project's releases (plan decision D3).
+Four images, each independently versioned and released by the tag-driven
+workflow (`.github/workflows/release.yml`), all build-gated on every PR by
+the CI `images` job (`.github/workflows/ci.yml` — an unbuildable pin can
+never land silently again):
 
-| Dockerfile | Image | Purpose |
+| Image | Dockerfile | Role |
 |---|---|---|
-| `Dockerfile.mesh-gateway` | `ghcr.io/K8sAgentMesh/mesh-gateway` | Standing-process gateway (`cmd/mesh-gateway`), env-configured (`MESH_RUNTIME_TYPE`, `MESH_MODEL`, `MESH_POOL_MIN/MAX`) |
-| `Dockerfile.agentruntime` | `ghcr.io/K8sAgentMesh/agentruntime` | Per-task NDJSON supervisor (`cmd/agentruntime`); flavor via `KSQUAD_RUNTIME_TYPE` |
-| `Dockerfile.toolchain-vibe` | `ghcr.io/K8sAgentMesh/toolchain-vibe` | Pinned uv + py3.12 + `mistral-vibe==2.9.6` substrate (the lane-proven `vibe` CLI pin; see the Dockerfile CLIVersion note) |
+| `mesh-gateway` | `Dockerfile.mesh-gateway` | The gateway pod: `meshgw` (HTTP `/healthz` `/ready` `/task` entrypoint) + `mesh-supervisor` (the standing band slot binary) + `mesh-gateway` (the minimal no-HTTP variant). debian-slim base — the pod hosts the band, whose children exec the layered toolchain CLIs. |
+| `agentruntime` | `Dockerfile.agentruntime` | The per-task supervisor pod: `mesh-supervisor` (HTTP ingest — what the chart's Deployment runs) + `agentruntime` (stdio supervisor for one-shot lanes). |
+| `toolchain-vibe` | `Dockerfile.toolchain-vibe` | The pinned uv/Python substrate: `mistral-vibe==2.9.6` (the engine's `py-v2.9.6` pin; the former `vibe==0.3.0` never resolved on PyPI — the CLI ships as `mistral-vibe`). |
+| `toolchain-codex` | `Dockerfile.toolchain-codex` | The pinned Node substrate: `@openai/codex@0.152.0` (the engine's `rust-v0.152.0` pin) + the vendored `mesh-codex-exec` D4 wrapper. |
 
-The codex toolchain image is an optional follow-up (plan decision D2).
+## Toolchain layering (chart wiring)
 
-The helm chart (`deploy/helm/k8sagentmesh`) composes these: the
-agentruntime Deployment layers the toolchain CLI onto the supervisor via an
-initContainer (see `values.yaml`).
+The supervisor images stay small; the pinned CLI substrate is layered on
+by the chart's initContainer (`gateway.toolchain` /
+`agentruntime.toolchain`): the toolchain image copies its CLI tree onto an
+emptyDir (`/toolchain/.local` for the uv install, `/toolchain/usr-local`
+for the npm one), and the Deployment prepends both to `PATH`
+(ISI-6217 gap 4 — without the amendment the spawned `vibe` /
+`mesh-codex-exec` binaries would not resolve).
+
+Repository defaults by runtime flavor: `runtimeType: vibe` →
+`toolchain-vibe`, `runtimeType: codex` → `toolchain-codex` (override with
+`*.toolchain.image.repository`).
+
+## The D4 codex wrapper
+
+`mesh-codex-exec` (installed by `Dockerfile.toolchain-codex`) is the
+vendored stdin wrapper the agentruntime codex engine execs: it combines the
+spilled system-context file (`KSQUAD_SYSTEM_CONTEXT_FILE`) with
+`KSQUAD_INPUT` and pipes the envelope into `codex exec -`, argv untouched.
+Hosts embedding the engine with their own wrapper (the k8squad host's
+`ksquad-codex-exec`) keep their name via `MESH_CODEX_EXEC_BIN`.

@@ -28,7 +28,7 @@ import (
 // error — the runner's settle path, not the parser, owns completion).
 //
 // NOTE(ISI-6203): the marker vocabulary below covers the documented
-// message/assistant/tool/result shapes of the py-v0.3.0 stream. The kind
+// message/assistant/tool/result shapes of the py-v2.9.6 stream. The kind
 // validation pass (ISI-6204, vanilla kind install) pins the exact emitted
 // markers against the pinned CLI and extends this map if the live stream
 // differs — the parse is deliberately permissive so an unrecognized marker
@@ -101,7 +101,7 @@ func parseVibeLine(line string) []Progress {
 // handles holding its event loop open after the work finished).
 //
 // NOTE(ISI-6203): recognized markers are the result/done family; ISI-6204
-// pins the exact py-v0.3.0 terminal marker on a vanilla kind install.
+// pins the exact py-v2.9.6 terminal marker on a vanilla kind install.
 func vibeSettleLine(line string) bool {
 	var ev vibeStreamEvent
 	if err := json.Unmarshal([]byte(line), &ev); err != nil {

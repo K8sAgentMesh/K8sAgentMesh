@@ -1,19 +1,27 @@
-# agentruntime — the per-task NDJSON supervisor of the standalone mesh
-# deploy (ISI-6158 C3). Serves /task NDJSON on stdin/stdout; the runtime
-# flavor is stamped via KSQUAD_RUNTIME_TYPE.
+# agentruntime — the per-task supervisor image of the standalone mesh deploy
+# (ISI-6158 C3, ingest surface closed in ISI-6217): the STDIO supervisor
+# (cmd/agentruntime — one taskRequest per stdin line, one Event per stdout
+# line; the one-shot surface) AND the standing HTTP supervisor
+# (cmd/mesh-supervisor — GET /health, GET /ready, POST /task a2a.Task in,
+# a2a.Event NDJSON out) the chart's Deployment runs behind its Service.
+# The runtime flavor is stamped via KSQUAD_RUNTIME_TYPE.
+#
 # The per-task coding-agent CLIs are layered on top of this image (the
-# toolchain-vibe image is the reference substrate) — see deploy/helm.
+# toolchain-vibe / toolchain-codex images are the reference substrates) —
+# see deploy/helm and images/README.md.
 FROM golang:1.27 AS build
 WORKDIR /src
 COPY go.mod go.sum* ./
 RUN go mod download || true
 COPY . .
-RUN CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /out/agentruntime ./cmd/agentruntime
+RUN CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /out/agentruntime ./cmd/agentruntime \
+ && CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /out/mesh-supervisor ./cmd/mesh-supervisor
 
 FROM debian:bookworm-slim
 RUN apt-get update \
  && apt-get install -y --no-install-recommends ca-certificates git \
  && rm -rf /var/lib/apt/lists/*
 COPY --from=build /out/agentruntime /usr/local/bin/agentruntime
+COPY --from=build /out/mesh-supervisor /usr/local/bin/mesh-supervisor
 ENV KSQUAD_RUNTIME_TYPE=vibe
 ENTRYPOINT ["/usr/local/bin/agentruntime"]

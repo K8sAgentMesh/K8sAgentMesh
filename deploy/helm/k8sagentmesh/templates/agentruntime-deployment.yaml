@@ -1,4 +1,5 @@
 {{- if .Values.agentruntime.enabled }}
+{{- $toolchainRepo := .Values.agentruntime.toolchain.image.repository | default (ternary "toolchain-codex" "toolchain-vibe" (eq .Values.agentruntime.runtimeType "codex")) }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -34,7 +35,7 @@ spec:
       {{- if .Values.agentruntime.toolchain.enabled }}
       initContainers:
         - name: toolchain
-          image: {{ include "k8sagentmesh.image" (dict "registry" .Values.global.image.registry "repository" .Values.agentruntime.toolchain.image.repository "tag" .Values.agentruntime.toolchain.image.tag "appVersion" .Chart.AppVersion) }}
+          image: {{ include "k8sagentmesh.image" (dict "registry" .Values.global.image.registry "repository" $toolchainRepo "tag" .Values.agentruntime.toolchain.image.tag "appVersion" .Chart.AppVersion) }}
           imagePullPolicy: {{ .Values.global.image.pullPolicy }}
           command: ["sh", "-c", "cp -r /root/.local /toolchain/.local 2>/dev/null || cp -r /usr/local /toolchain/usr-local 2>/dev/null || true"]
           volumeMounts:
@@ -48,9 +49,16 @@ spec:
         - name: agentruntime
           image: {{ include "k8sagentmesh.image" (dict "registry" .Values.global.image.registry "repository" .Values.agentruntime.image.repository "tag" .Values.agentruntime.image.tag "appVersion" .Chart.AppVersion) }}
           imagePullPolicy: {{ .Values.global.image.pullPolicy }}
+          # ISI-6217 gap 2: a Deployment attaches no stdin, so the stdio
+          # supervisor (ENTRYPOINT default) would EOF and restart-loop. The
+          # deployed pod runs the standing HTTP supervisor instead — the
+          # task-ingest surface behind the agentruntime Service.
+          command: {{ .Values.agentruntime.command | toYaml | nindent 12 }}
           env:
             - name: KSQUAD_RUNTIME_TYPE
               value: {{ .Values.agentruntime.runtimeType | quote }}
+            - name: KSQUAD_SUPERVISOR_ADDR
+              value: ":{{ .Values.agentruntime.service.port }}"
             {{- if .Values.agentruntime.model }}
             - name: VIBE_ACTIVE_MODEL
               value: {{ .Values.agentruntime.model | quote }}
@@ -84,10 +92,19 @@ spec:
                   key: {{ .Values.agentruntime.credentials.openaiApiKeyKey }}
             {{- end }}
             {{- end }}
+            {{- if .Values.agentruntime.toolchain.enabled }}
+            # ISI-6217 gap 4: the layered toolchain must lead PATH or the
+            # spawned CLI would not resolve without an explicit override.
+            - name: PATH
+              value: "/toolchain/.local/bin:/toolchain/usr-local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+            {{- end }}
             {{- range .Values.extraEnv }}
             - name: {{ .name | quote }}
               value: {{ .value | quote }}
             {{- end }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.agentruntime.service.port }}
           {{- if .Values.agentruntime.toolchain.enabled }}
           volumeMounts:
             - name: toolchain

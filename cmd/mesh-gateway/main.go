@@ -25,6 +25,9 @@ limitations under the License.
 //	MESH_MODEL         envelope model override (optional)
 //	MESH_AGENT_NAME    card identity name (default mesh-gateway)
 //	MESH_POOL_MIN / MESH_POOL_MAX  standing band shape (default 1/1)
+//	MESHGW_SHIM_BIN     the standing supervisor LocalHost execs (default
+//	                    "shim" on PATH; the shipped chart image carries
+//	                    mesh-supervisor and points this at it)
 package main
 
 import (
@@ -105,7 +108,16 @@ func main() {
 		RuntimeTypeEnv: runtimeTypeEnv,
 	}
 
-	ad, err := adapter(&mesh.LocalHost{}, spec)
+	// The standing-band substrate: LocalHost execs the shim supervisor the
+	// chart ships inside this image (ISI-6217 gap 1). MESHGW_SHIM_BIN is the
+	// seam — empty falls back to LocalHost's PATH default ("shim"), which a
+	// host embedding this binary may still provide.
+	host := &mesh.LocalHost{}
+	if b := os.Getenv("MESHGW_SHIM_BIN"); b != "" {
+		host.BinPath = b
+	}
+
+	ad, err := adapter(host, spec)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "mesh-gateway:", err)
 		os.Exit(1)

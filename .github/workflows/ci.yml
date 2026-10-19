@@ -7,6 +7,8 @@ name: ci
 # hardened (multi-arch + provenance/SBOM + built-image CVE gate + GHCR publish,
 # ISI-6212) — ready to promote to the required set (see
 # docs/ci-branch-protection.md).
+# `images` builds every images/ Dockerfile on every PR (ISI-6217 build
+# gate — the toolchain pins must resolve or the check fails).
 # Self-activating stubs: helm, functional — gated on the `detect` job's
 # outputs. `hashFiles()` cannot be used reliably in a job-level `if` (the
 # workspace is empty before checkout, see
@@ -419,6 +421,45 @@ jobs:
           sbom: true
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+  images:
+    name: Images build gate (images/*)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    needs: detect
+    if: needs.detect.outputs.docker == 'true'
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        image:
+          - name: mesh-gateway
+            dockerfile: images/Dockerfile.mesh-gateway
+          - name: agentruntime
+            dockerfile: images/Dockerfile.agentruntime
+          - name: toolchain-vibe
+            dockerfile: images/Dockerfile.toolchain-vibe
+          - name: toolchain-codex
+            dockerfile: images/Dockerfile.toolchain-codex
+    steps:
+      - uses: actions/checkout@v7
+      - uses: docker/setup-buildx-action@v4
+      # ISI-6217: every images/ Dockerfile must BUILD on every PR — the
+      # toolchain-vibe pin (vibe==0.3.0) was unbuildable from birth and
+      # nothing caught it because only the root Dockerfile was exercised.
+      # The toolchain Dockerfiles' smoke RUN lines additionally prove the
+      # pinned CLIs answer --version before the layer is cached.
+      - name: Build image (load, no push)
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: ${{ matrix.image.dockerfile }}
+          load: true
+          platforms: linux/amd64
+          tags: k8sagentmesh-${{ matrix.image.name }}:ci
+          cache-from: type=gha,scope=images-${{ matrix.image.name }}
+          cache-to: type=gha,scope=images-${{ matrix.image.name }},mode=max
 
   helm:
     name: Helm lint + ct lint + kubeconform
