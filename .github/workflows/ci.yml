@@ -487,7 +487,8 @@ jobs:
         # Installs every chart on the kind cluster above. ct automatically
         # picks up the chart's ci/ct-values.yaml (pause-image smoke override
         # so PR runs don't depend on the release tag cadence, ISI-6211).
-        run: ct install --all --chart-dirs . --validate-maintainers=false
+        # --validate-maintainers is a ct lint-only flag.
+        run: ct install --all --chart-dirs .
       - name: kubeconform with repo CRDs
         run: |
           set -euo pipefail
