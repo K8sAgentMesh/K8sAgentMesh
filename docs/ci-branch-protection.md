@@ -42,7 +42,7 @@ Notes for the admin:
 |--------------------|----------------|--------------------------|
 | `performance` | always runs; publishes results only when `Benchmark*` funcs exist | benchmark baselines land (ISI-6106) |
 | `docker` | `detect` finds a `Dockerfile*` (**active now** — root `Dockerfile` present) | **now — ready to promote** (hardening landed, ISI-6212) |
-| `helm` | `detect` finds a `Chart.yaml` (today: skips cleanly) | Helm chart lands (ISI-6104) |
+| `helm` | `detect` finds a `Chart.yaml` (**active now** — chart landed, ISI-6203) | **after the ct-install hardening PR merges and the first activated run is green** (ISI-6104) — see admin action below |
 | `functional` | `detect` finds files under `test/integration/` (today: skips cleanly) | envtest suite lands (ISI-6105) |
 
 > **Admin action — promote `docker` to required (ISI-6212).** The `docker` job
@@ -54,6 +54,18 @@ Notes for the admin:
 > status-check set. The `sbom-cve` required check retains the complementary
 > source/dependency-tree CVE gate, so enforcement never regresses during the
 > rollout.
+
+> **Admin action — promote `helm` to required (ISI-6104), after the ct-install
+> hardening PR merges and the first activated `helm` run on `main` is green.**
+> The chart landed (ISI-6203) so the job no longer skips; the hardening PR adds
+> `ct install` against an ephemeral kind cluster on top of the existing
+> `helm lint` + `ct lint --validate-maintainers=false` + `kubeconform`
+> (with the repo CRDs). `ct install` uses the chart's
+> `deploy/helm/k8sagentmesh/ci/ct-values.yaml` smoke override (ISI-6211) so PR
+> runs prove render + apply + `helm install --wait` on a real cluster without
+> depending on the release tag cadence. Once the first post-merge `helm` run on
+> `main` is green, add `Helm lint + ct lint/install + kubeconform` to the
+> required status-check set.
 
 Rationale: the conditional jobs self-skip today and activate via the `detect` job's outputs when their
 Phase 2 artifacts land. Requiring them prematurely would block all PRs on jobs that cannot exercise

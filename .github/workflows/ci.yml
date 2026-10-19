@@ -462,13 +462,16 @@ jobs:
           cache-to: type=gha,scope=images-${{ matrix.image.name }},mode=max
 
   helm:
-    name: Helm lint + ct lint + kubeconform
+    name: Helm lint + ct lint/install + kubeconform
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
     needs: detect
     if: needs.detect.outputs.helm == 'true'
     steps:
       - uses: actions/checkout@v7
+        with:
+          # Full history so chart-testing can diff charts against the target branch.
+          fetch-depth: 0
       - uses: azure/setup-helm@v5
       - name: helm lint
         run: |
@@ -479,6 +482,12 @@ jobs:
       - uses: helm/chart-testing-action@v2
       - name: ct lint
         run: ct lint --all --chart-dirs . --validate-maintainers=false
+      - uses: helm/kind-action@v1
+      - name: ct install (kind)
+        # Installs every chart on the kind cluster above. ct automatically
+        # picks up the chart's ci/ct-values.yaml (pause-image smoke override
+        # so PR runs don't depend on the release tag cadence, ISI-6211).
+        run: ct install --all --chart-dirs . --validate-maintainers=false
       - name: kubeconform with repo CRDs
         run: |
           set -euo pipefail
