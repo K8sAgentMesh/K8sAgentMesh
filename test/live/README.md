@@ -6,6 +6,14 @@ end-to-end on a fresh kind cluster while two known substrate gaps are still
 open. Nothing here is installed by the chart or shipped in any image the
 chart references.
 
+> **`ollama.yaml` is a CI-only, zero-credential convenience — not the product
+> default.** The lane runs an in-cluster Ollama (`qwen2.5:0.5b`) purely so the
+> `/task` settle checks need no model credentials in CI. It is slow and
+> single-replica; do **not** read it as the recommended backend. Production
+> installs bring their own OpenAI-compatible endpoint via
+> `agentruntime.modelRoute.endpoint` — see the chart README's *Model backend*
+> matrix and `docs/quickstart.md`.
+
 ## What the lane proves
 
 1. **Vanilla install** — the three real in-repo images (built in-job, since
