@@ -462,13 +462,16 @@ jobs:
           cache-to: type=gha,scope=images-${{ matrix.image.name }},mode=max
 
   helm:
-    name: Helm lint + ct lint + kubeconform
+    name: Helm lint + ct lint/install + kubeconform
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
     needs: detect
     if: needs.detect.outputs.helm == 'true'
     steps:
       - uses: actions/checkout@v7
+        with:
+          # Full history so chart-testing can diff charts against the target branch.
+          fetch-depth: 0
       - uses: azure/setup-helm@v5
       - name: helm lint
         run: |
@@ -478,7 +481,32 @@ jobs:
           done
       - uses: helm/chart-testing-action@v2
       - name: ct lint
-        run: ct lint --all --chart-dirs . --validate-maintainers=false
+        # ct discovers charts exactly one level below each --chart-dirs
+        # entry and rejects "./"-prefixed or "." dirs, so map every
+        # Chart.yaml in the repo to its normalized parent directory
+        # (a plain --chart-dirs . would lint nothing).
+        run: |
+          set -euo pipefail
+          dirs=$(find . -path ./.git -prune -o -name Chart.yaml -print \
+            | while read -r ch; do dirname "$(dirname "$ch")"; done \
+            | sed 's|^\./||' | sort -u)
+          for d in $dirs; do
+            ct lint --all --chart-dirs "$d" --validate-maintainers=false
+          done
+      - uses: helm/kind-action@v1
+      - name: ct install (kind)
+        # Installs every chart on the kind cluster above. ct automatically
+        # picks up each chart's ci/ct-values.yaml (pause-image smoke override
+        # so PR runs don't depend on the release tag cadence, ISI-6211).
+        # --validate-maintainers is a ct lint-only flag.
+        run: |
+          set -euo pipefail
+          dirs=$(find . -path ./.git -prune -o -name Chart.yaml -print \
+            | while read -r ch; do dirname "$(dirname "$ch")"; done \
+            | sed 's|^\./||' | sort -u)
+          for d in $dirs; do
+            ct install --all --chart-dirs "$d"
+          done
       - name: kubeconform with repo CRDs
         run: |
           set -euo pipefail
