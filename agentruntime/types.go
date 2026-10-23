@@ -27,6 +27,9 @@ const (
 	// v1.55.0 by the ISI-6128 Phase A spike; mesh half =
 	// mesh.NewGooseAdapter, ISI-6197).
 	RuntimeTypeGoose = "goose"
+	// RuntimeTypeClaudeCode is Anthropic's Claude Code coding agent
+	// (P4.4, ISI-6130; mesh half = mesh.NewClaudeCodeAdapter).
+	RuntimeTypeClaudeCode = "claude-code"
 )
 
 // Credential types advertised on the Agent Card (a2a.AuthInfo.Type): the
@@ -37,6 +40,10 @@ const (
 	CredentialTypeOpenAI = "openai_api_key"
 	// CredentialTypeMistral is the vibe lane (MISTRAL_API_KEY).
 	CredentialTypeMistral = "mistral_api_key"
+	// CredentialTypeClaudeOAuth is the claude-code lane
+	// (CLAUDE_CODE_OAUTH_TOKEN — the subscription-seat OAuth flow, story 7.2).
+	// #nosec G101 -- a credential-TYPE label for the Agent Card, not a secret.
+	CredentialTypeClaudeOAuth = "claude_oauth_token"
 )
 
 // Package mcp is the minimal MCP-intermediate-representation seam the

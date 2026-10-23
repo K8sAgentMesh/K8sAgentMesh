@@ -27,9 +27,11 @@ import (
 // the conformant RuntimeType constants (FR-D3).
 func TestV1ShimSetRegistered(t *testing.T) {
 	// ISI-6203 upstreamed set (codex + vibe) + goose (ISI-6128 P4.2,
-	// vanilla-standalone gap closed ISI-6215); hermes/openclaw/opencode stay
-	// host-side until their own upstream pass.
+	// vanilla-standalone gap closed ISI-6215) + claude-code (ISI-6130 P4.4
+	// promotion from the fail-closed Phase 2 set);
+	// hermes/openclaw/opencode stay host-side until their own upstream pass.
 	want := []string{
+		RuntimeTypeClaudeCode,
 		RuntimeTypeCodex,
 		RuntimeTypeGoose,
 		RuntimeTypeVibe,
@@ -56,8 +58,11 @@ func TestV1ShimSetRegistered(t *testing.T) {
 }
 
 func TestGetUnknownRuntimeFailsClosed(t *testing.T) {
-	if _, err := Get("claude-code"); err == nil {
-		t.Fatal("Get(claude-code) should fail closed (Phase 2, not in v1 set)")
+	// ISI-6130 promoted claude-code out of the fail-closed Phase 2 set;
+	// openclaw stands in as the still-host-side flavor the registry must
+	// refuse rather than serve silently.
+	if _, err := Get("openclaw"); err == nil {
+		t.Fatal("Get(openclaw) should fail closed (host-side, not in the module set)")
 	}
 }
 
@@ -97,6 +102,8 @@ func TestCredentialMapping(t *testing.T) {
 		// goose maps onto OPENAI_API_KEY for its OpenAI-compatible BYO lane
 		// (ISI-6128 spike contract; native lanes read their own env).
 		RuntimeTypeGoose: "OPENAI_API_KEY",
+		// claude-code maps onto the OAuth seat env (story 7.2, ISI-6130).
+		RuntimeTypeClaudeCode: "CLAUDE_CODE_OAUTH_TOKEN",
 	}
 	for typ, wantVar := range cases {
 		rt, _ := Get(typ)
