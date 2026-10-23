@@ -1,4 +1,4 @@
-# MeshPool — the mesh-owned standing-pool CRD contract (P3.8, ISI-6086).
+# MeshPool — the mesh-owned standing-pool CRD contract (P3.8).
 # Shapes derive from the lifted mechanism: mesh.PoolPlan/GatewayConfig
 # (P3.5/P3.3) and mesh.LifecycleConfig (D4.2). Host #1 (k8squad) keeps RolePool
 # as its source of truth and projects into these semantics via the P3.5

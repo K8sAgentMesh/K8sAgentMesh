@@ -1,8 +1,8 @@
-# MeshTelemetry — the mesh-owned telemetry emission CRD contract (P3.8,
-# ISI-6086). Shapes derive from the P3.6 lifecycle-event contract
+# MeshTelemetry — the mesh-owned telemetry emission CRD contract (P3.8).
+# Shapes derive from the P3.6 lifecycle-event contract
 # (mesh.LifecycleObserver: route|spawn|wake — deliberately no hibernate
 # hook; hibernation rides the process-state gauge). Emitter ships none|otel
-# only per the board decision on ISI-5827 interaction 826a7541 — the NATS
+# only per the board design review — the NATS
 # emitter is deferred until the event schema proves out. This CRD does NOT
 # duplicate a host's OtelConfig spine. No controller ships with the module.
 apiVersion: apiextensions.k8s.io/v1
