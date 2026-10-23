@@ -35,7 +35,7 @@ host-reference-free AND it is mechanism-not-policy:
   lifted, proven interfaces (P3.4 Registry, P3.5 SchedulingPolicy, P3.6
   LifecycleObserver), never designed ahead of them. k8squad's RolePool stays
   host #1's source of truth and *projects* into `MeshPool` semantics via the
-  P3.5 seam — it is not replaced. Board decisions (ISI-5827 interaction
+  P3.5 seam — it is not replaced. Board decisions (recorded in interaction
   `826a7541`): the `MeshTelemetry` emitter ships `none|otel` only (NATS emitter
   deferred); `MeshRoute.fallback` stays (`legacy` for host #1, `fail` for
   host #2).

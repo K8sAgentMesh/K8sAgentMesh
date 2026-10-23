@@ -1,7 +1,7 @@
 # Branch-Protection Checklist — K8sAgentMesh main branch (Phase 1 CI)
 
-Deliverable for ISI-6102 (validation task from the approved CI plan on ISI-6095, plan revision 82afbd79).
-FINAL job IDs confirmed against the landed `.github/workflows/ci.yml` (commit 59f27a3, ISI-6101), actionlint 1.7.7 clean.
+Validation deliverable from the approved CI plan (revision 82afbd79).
+FINAL job IDs confirmed against the landed `.github/workflows/ci.yml` (commit 59f27a3), actionlint 1.7.7 clean.
 This text is to be pasted into the live test PR description for the repo admin to apply.
 
 ## Where to apply
@@ -40,12 +40,12 @@ Notes for the admin:
 
 | Check name (job ID) | Activates when | Promote to required when |
 |--------------------|----------------|--------------------------|
-| `performance` | always runs; publishes results only when `Benchmark*` funcs exist | benchmark baselines land (ISI-6106) |
-| `docker` | `detect` finds a `Dockerfile*` (**active now** — root `Dockerfile` present) | **now — ready to promote** (hardening landed, ISI-6212) |
-| `helm` | `detect` finds a `Chart.yaml` (today: skips cleanly) | Helm chart lands (ISI-6104) |
-| `functional` | `detect` finds files under `test/integration/` (today: skips cleanly) | envtest suite lands (ISI-6105) |
+| `performance` | always runs; publishes results only when `Benchmark*` funcs exist | benchmark baselines land |
+| `docker` | `detect` finds a `Dockerfile*` (**active now** — root `Dockerfile` present) | **now — ready to promote** (hardening landed) |
+| `helm` | `detect` finds a `Chart.yaml` (today: skips cleanly) | Helm chart lands |
+| `functional` | `detect` finds files under `test/integration/` (today: skips cleanly) | envtest suite lands |
 
-> **Admin action — promote `docker` to required (ISI-6212).** The `docker` job
+> **Admin action — promote `docker` to required.** The `docker` job
 > is now active and hardened: it builds `linux/amd64,linux/arm64` with
 > provenance + SBOM attestation and runs the authoritative **built-image** Grype
 > CVE gate (fail on Critical). On `main`/release it publishes a digest-pinned
@@ -68,7 +68,7 @@ list (one-line change in the protection rule).
 - Linear history: recommended (matches current single-line main history), optional.
 - Require branches up to date before merging: enable after the first live PR cycle is green to avoid noisy rebases during rollout.
 
-## Validation evidence (ISI-6102, completed 2026-10-18)
+## Validation evidence (completed 2026-10-18)
 
 1. DONE — `actionlint` 1.7.7 clean over `.github/workflows/ci.yml` (only workflow file in the repo).
 2. DONE — live test PR: https://github.com/K8sAgentMesh/K8sAgentMesh/pull/1, head `b86da60`, run 39106702257 —
@@ -86,4 +86,4 @@ Failures triaged to concrete fixes along the way:
 - `security-deps`: dependency review requires the dependency graph + GHAS on this private repo —
   self-activating probe added (commit 418b8bb); runs strictly once the features are enabled.
 
-<!-- dco negative probe (ISI-6102): this commit is deliberately unsigned; expect the dco check to fail, then the signoff fix re-push to go green. -->
+<!-- dco negative probe: this commit is deliberately unsigned; expect the dco check to fail, then the signoff fix re-push to go green. -->
