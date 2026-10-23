@@ -3,8 +3,8 @@ name: k8sagentmesh
 description: |
   Vanilla K8sAgentMesh install: the standing-process gateway (HTTP /task
   entrypoint + mesh-owned standing supervisor), the per-task agentruntime
-  ingest surface behind a Service, RBAC and the mesh CRDs (ISI-6158 C3,
-  substrate closed in ISI-6217). Independent versioning, decoupled from any
+  ingest surface behind a Service, RBAC and the mesh CRDs (P3.5 vanilla install,
+  substrate hardened). Independent versioning, decoupled from any
   host project's releases (plan decision D3).
 type: application
 # NOTE: version and appVersion are stamped to the repo tag by the release

@@ -1,5 +1,5 @@
-# Default values for the vanilla k8sagentmesh chart (ISI-6158 C3;
-# ingest surface + toolchain PATH closed in ISI-6217).
+# Default values for the vanilla k8sagentmesh chart (P3.5 vanilla install;
+# ingest surface + toolchain PATH closed in the substrate-hardening milestone).
 
 # -- Global image settings. Tags left empty default to the chart's
 # appVersion (the repo tag the release workflow stamps).
@@ -23,7 +23,7 @@ gateway:
     max: 1
   # -- Toolchain layer for the standing band: the gateway pod hosts the
   # band, so the pinned CLI substrate (vibe or codex) is copied onto the
-  # pod by an initContainer and prepended to PATH (ISI-6217 gaps 1+4).
+  # pod by an initContainer and prepended to PATH (band-host + toolchain PATH).
   toolchain:
     enabled: true
     image:
@@ -57,7 +57,7 @@ agentruntime:
     endpoint: ""   # e.g. http://ollama.ollama.svc:11434/v1
     model: ""
   # -- Task-ingest Service fronting the supervisor's POST /task NDJSON
-  # surface (ISI-6217 gap 2).
+  # surface (the stdio stdin gap).
   service:
     type: ClusterIP
     port: 8080

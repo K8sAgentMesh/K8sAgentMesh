@@ -1,8 +1,8 @@
 # Mesh lifecycle-event contract
 
-**P3.6 (ISI-6039)** — the NATS-emission concept of the AgentMesh chapter
+**P3.6** — the NATS-emission concept of the AgentMesh chapter
 (§8.2/§8.3) formalized as the K8sAgentMesh module's lifecycle-event contract.
-Grounding: observability consult verdict ISI-5813 (§11.3 a–b schema delta).
+Grounding: the observability consult verdict (§11.3 a–b schema delta).
 
 ## Shape
 
@@ -45,7 +45,7 @@ the triggering route's context, so an emitter can nest it under the route.
 
 ### `WakeEvent` — `ObserveWake(ctx, e)`
 
-One hibernation wake (S4, ISI-5831): SIGCONT → ready.
+One hibernation wake (S4): SIGCONT → ready.
 
 | Field | Type | Schema |
 |---|---|---|
@@ -71,7 +71,7 @@ Where a full hibernate *entry* event belongs is the wire-emitter design space
 `register`/`deregister`/`hibernate`/`wake`/`stop` — as edge-triggered
 state-change facts. `pool_saturated` stays **metric-only** (derive
 `busy == max` from the gauge; a sampled threshold has no transaction to ride —
-ISI-5813 verdict A2).
+consult verdict A2).
 
 ## Process-state gauge inputs
 

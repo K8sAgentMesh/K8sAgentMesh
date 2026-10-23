@@ -29,11 +29,11 @@ spec:
       {{- with .Values.gateway.affinity }}
       affinity: {{- toYaml . | nindent 8 }}
       {{- end }}
-      # The standing band lives in the gateway pod (ISI-6217 gap 1), so the
+      # The standing band lives in the gateway pod (the band-host design), so the
       # pinned CLI toolchain is layered here too — same initContainer pattern
       # as the agentruntime Deployment (images/README.md) — and prepended to
       # PATH so the band's supervisor children resolve the runtime CLI
-      # (ISI-6217 gap 4).
+      # (toolchain PATH precedence).
       {{- if .Values.gateway.toolchain.enabled }}
       initContainers:
         - name: toolchain
@@ -66,7 +66,7 @@ spec:
               value: {{ .Values.gateway.model | quote }}
             {{- end }}
             {{- if .Values.gateway.toolchain.enabled }}
-            # ISI-6217 gap 4: the layered toolchain must lead PATH or the
+            # Substrate gap: the layered toolchain must lead PATH or the
             # standing band's CLI would not resolve without extra values.
             - name: PATH
               value: "/toolchain/.local/bin:/toolchain/usr-local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"

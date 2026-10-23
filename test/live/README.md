@@ -1,4 +1,4 @@
-# test/live — the ISI-6211 live validation lane
+# test/live — the live validation lane
 
 Everything under `test/live/` is **test-lane fixture code**, not product: it
 exists so `.github/workflows/live-validation.yml` can prove the vanilla mesh
@@ -13,7 +13,7 @@ chart references.
    kind cluster; `helm get all` contains zero `k8squad` references.
 2. **Supervisor `/task` NDJSON settle** — one vibe task and one codex task,
    each a single NDJSON line in (the `taskRequest` wire of
-   `cmd/agentruntime`), each settling per the ISI-4224 bar: a terminal
+   `cmd/agentruntime`), each settling per the settle-contract bar: a terminal
    `{"kind":"completed"|"failed"}` line **and** prompt stream close — driven
    against an in-cluster Ollama (`qwen2.5:0.5b`), the zero-credential lane
    (spec §11/C9), so no model credentials ever exist in the lane.
@@ -66,6 +66,6 @@ with a public pin is repo work.
 | `lane-codex.Dockerfile` | supervisor + codex CLI + the test-only `ksquad-codex-exec` wrapper |
 | `mesh-codex-exec` | the test-only D4 wrapper (see gap 3) |
 | `tasks/vibe-task.json`, `tasks/codex-task.json` | one-line `taskRequest` payloads with the Ollama `modelRoute` |
-| `settle-check.sh` | asserts terminal line + stream close per transcript (the ISI-4224 bar) |
+| `settle-check.sh` | asserts terminal line + stream close per transcript (the settle-contract bar) |
 | `cluster-snapshot.sh` / `cluster-diff.sh` | before/after control-plane state + allowlisted-delta assertion |
 | `gateway-probe.sh` | timed `/task` HTTP probe against the gateway Service (gap-evidence, never fails the lane) |

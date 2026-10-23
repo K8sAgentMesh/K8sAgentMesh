@@ -1,4 +1,4 @@
-# images/ — the vanilla substrate images (ISI-6217)
+# images/ — the vanilla substrate images (substrate-hardening milestone)
 
 Four images, each independently versioned and released by the tag-driven
 workflow (`.github/workflows/release.yml`), all build-gated on every PR by
@@ -19,7 +19,7 @@ by the chart's initContainer (`gateway.toolchain` /
 `agentruntime.toolchain`): the toolchain image copies its CLI tree onto an
 emptyDir (`/toolchain/.local` for the uv install, `/toolchain/usr-local`
 for the npm one), and the Deployment prepends both to `PATH`
-(ISI-6217 gap 4 — without the amendment the spawned `vibe` /
+(toolchain PATH precedence — without the amendment the spawned `vibe` /
 `mesh-codex-exec` binaries would not resolve).
 
 Repository defaults by runtime flavor: `runtimeType: vibe` →

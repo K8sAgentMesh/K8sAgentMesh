@@ -1,4 +1,4 @@
-# lane-vibe — TEST-ONLY vibe substrate for the ISI-6211 live validation
+# lane-vibe — TEST-ONLY vibe substrate for the live validation
 # lane. Two accommodations, both documented in test/live/README.md:
 #   1. The product image (images/Dockerfile.toolchain-vibe) pins
 #      `vibe==0.3.0`, a pin that exists on no PyPI (the CLI ships as

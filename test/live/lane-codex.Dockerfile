@@ -1,4 +1,4 @@
-# lane-codex — TEST-ONLY codex substrate for the ISI-6211 live validation
+# lane-codex — TEST-ONLY codex substrate for the live validation
 # lane. Plan decision D2 deferred the codex toolchain image, and the
 # `ksquad-codex-exec` D4 wrapper this repo's codex engine execs is not
 # vendored here (it lives in the k8squad host project); this fixture builds

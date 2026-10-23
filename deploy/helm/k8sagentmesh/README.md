@@ -1,6 +1,6 @@
 # k8sagentmesh (vanilla chart)
 
-Vanilla K8sAgentMesh install (ISI-6158 C3, substrate closed in ISI-6217):
+Vanilla K8sAgentMesh install (P3.5 vanilla install, substrate hardening closed):
 the standing-process gateway, the per-task agentruntime ingest surface,
 RBAC and the mesh CRDs. No host project required — images come from
 `ghcr.io/K8sAgentMesh/*`, built by the tag-driven release workflow.
@@ -35,7 +35,7 @@ helm install mesh deploy/helm/k8sagentmesh \
 ```
 
 For a full end-to-end validation (vibe + codex settle via /task NDJSON on
-a vanilla kind install) see ISI-6204.
+a vanilla kind install) see the Quickstart.
 
 ## Task ingest
 
@@ -46,7 +46,7 @@ curl -N -s -H 'Content-Type: application/json' \
   http://127.0.0.1:8080/task
 ```
 
-The stream settles per the ISI-4224 bar: a terminal
+The stream settles per the settle-contract bar: a terminal
 `{"type":"status","payload":{"state":"completed"|"failed"}}` line, then the
 body closes. Routing through the gateway's standing band instead
 (`svc/<release>-gateway`) uses the identical wire with `?target=` selection.

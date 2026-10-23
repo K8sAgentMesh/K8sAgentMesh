@@ -1,5 +1,5 @@
 # agentruntime — the per-task supervisor image of the standalone mesh deploy
-# (ISI-6158 C3, ingest surface closed in ISI-6217): the STDIO supervisor
+# (P3.5 vanilla install, ingest surface closed): the STDIO supervisor
 # (cmd/agentruntime — one taskRequest per stdin line, one Event per stdout
 # line; the one-shot surface) AND the standing HTTP supervisor
 # (cmd/mesh-supervisor — GET /health, GET /ready, POST /task a2a.Task in,

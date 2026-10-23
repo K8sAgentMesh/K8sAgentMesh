@@ -49,7 +49,7 @@ spec:
         - name: agentruntime
           image: {{ include "k8sagentmesh.image" (dict "registry" .Values.global.image.registry "repository" .Values.agentruntime.image.repository "tag" .Values.agentruntime.image.tag "appVersion" .Chart.AppVersion) }}
           imagePullPolicy: {{ .Values.global.image.pullPolicy }}
-          # ISI-6217 gap 2: a Deployment attaches no stdin, so the stdio
+          # Substrate gap: a Deployment attaches no stdin, so the stdio
           # supervisor (ENTRYPOINT default) would EOF and restart-loop. The
           # deployed pod runs the standing HTTP supervisor instead — the
           # task-ingest surface behind the agentruntime Service.
@@ -93,7 +93,7 @@ spec:
             {{- end }}
             {{- end }}
             {{- if .Values.agentruntime.toolchain.enabled }}
-            # ISI-6217 gap 4: the layered toolchain must lead PATH or the
+            # Substrate gap: the layered toolchain must lead PATH or the
             # spawned CLI would not resolve without an explicit override.
             - name: PATH
               value: "/toolchain/.local/bin:/toolchain/usr-local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
