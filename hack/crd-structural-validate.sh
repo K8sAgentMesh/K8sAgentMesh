@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# crd-structural-validate.sh — the CRD contract guard (ISI-6086, P3.8):
+# crd-structural-validate.sh — the CRD contract guard (P3.8):
 # the mesh-owned CRD YAML under apis/mesh/v1alpha1/crd must pass
 # structural-schema validation and stay consistent with the Go types.
 #

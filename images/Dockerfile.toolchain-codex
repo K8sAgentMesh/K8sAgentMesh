@@ -1,5 +1,5 @@
 # toolchain-codex — the pinned Node substrate the headless `codex` CLI and
-# the vendored mesh-codex-exec D4 wrapper depend on (ISI-6217 gap 3; plan
+# the vendored mesh-codex-exec D4 wrapper depend on (the pinned toolchain substrate; plan
 # decision D2 originally deferred this image). @openai/codex@0.152.0 is the
 # pin the agentruntime engine advertises as CLIVersion rust-v0.152.0
 # (ADR-017 reproducibility); bump them together or not at all.

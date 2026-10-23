@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# extraction-clean.sh — the P3 seam guard (ISI-5827): no package in this
+# extraction-clean.sh — the P3 seam guard: no package in this
 # module may import github.com/K8squad/K8squad/*. The module is the generic
 # AgentMesh surface; k8squad is host #1 behind the seam, never inside it.
 #

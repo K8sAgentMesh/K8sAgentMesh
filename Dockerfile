@@ -1,12 +1,11 @@
 # syntax=docker/dockerfile:1
 #
-# Dedicated container image for k8sAgentMesh (ISI-6205). Entrypoint: meshgw,
+# Dedicated container image for k8sAgentMesh. Entrypoint: meshgw,
 # the AgentMesh gateway server (cmd/meshgw) — the per-pod PID1 process-manager
-# that holds a pool of coding-agent runtime processes (goose by default,
-# ISI-6197) behind the RuntimeAdapter seam and serves /healthz, /ready and the
+# that holds a pool of coding-agent runtime processes (goose by default) behind the RuntimeAdapter seam and serves /healthz, /ready and the
 # A2A /task surface.
 #
-# Hardening (ISI-6205 base + ISI-6103 Phase B / ISI-6212): multi-stage, minimal
+# Hardening: multi-stage, minimal
 # non-root distroless base, static (CGO-free) binary, and digest-pinned base
 # images below. The CI `docker` job (.github/workflows/ci.yml) builds this
 # linux/amd64,linux/arm64 with provenance + SBOM attestation, runs a Grype scan
@@ -16,7 +15,7 @@
 # Run:    docker run --rm -p 8080:8080 k8sagentmesh:dev   # serves /healthz, /ready
 
 # ---- build stage ------------------------------------------------------------
-# Digest-pinned for reproducible, tamper-evident builds (ISI-6212). The pin is
+# Digest-pinned for reproducible, tamper-evident builds. The pin is
 # the multi-arch manifest-list digest, so buildx still resolves the right
 # per-platform image under `--platform linux/amd64,linux/arm64`. Refreshed by
 # Dependabot (see .github/dependabot.yml, `package-ecosystem: docker`), which

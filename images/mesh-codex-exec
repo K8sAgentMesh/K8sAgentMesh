@@ -1,6 +1,6 @@
 #!/bin/sh
 # mesh-codex-exec — the vendored D4 stdin wrapper the agentruntime codex
-# engine execs (agentruntime/codex.go; ISI-6217 gap 3). Contract (the k8squad
+# engine execs (agentruntime/codex.go). Contract (the k8squad
 # D4 wrapper's, vendored mesh-side): combine the spilled system-context
 # file (KSQUAD_SYSTEM_CONTEXT_FILE) with KSQUAD_INPUT, blank-line separated —
 # agentruntime.EnvelopePrompt semantics — and pipe the envelope into

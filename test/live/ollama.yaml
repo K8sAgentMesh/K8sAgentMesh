@@ -1,5 +1,5 @@
 # In-cluster Ollama — the zero-credential model lane (spec §11/C9) for the
-# ISI-6211 live validation. Test-lane fixture, not shipped product.
+# Live validation lane. Test-lane fixture, not shipped product.
 apiVersion: v1
 kind: Namespace
 metadata:

@@ -10,7 +10,7 @@
 # (registry.k8s.io/pause) for the gateway + agentruntime workloads. The
 # deployments declare no readiness/liveness probes, so a Running pause pod
 # satisfies `helm install --wait` — proving the chart renders and applies on
-# a real kind cluster (ISI-6211 item 1: vanilla install, zero k8squad)
+# a real kind cluster (live-validation goal 1: vanilla install, zero k8squad)
 # without depending on the release cadence.
 #
 # This file is test-only: real installs never read ci/, so chart behaviour

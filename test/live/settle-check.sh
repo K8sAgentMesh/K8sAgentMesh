@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# settle-check.sh — assert the ISI-4224 settle-contract bar on a supervisor
+# settle-check.sh — assert the settle-contract bar on a supervisor
 # /task NDJSON transcript: the stream must END (this script only runs once
 # the producing process exited — kubectl -i returned), and the last JSON
 # event line must be terminal: {"kind":"completed"} or {"kind":"failed"}

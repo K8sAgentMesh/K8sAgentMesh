@@ -1,12 +1,12 @@
-# mesh-gateway — the standalone K8sAgentMesh gateway image (ISI-6158 C3,
-# substrate closed in ISI-6217): the HTTP gateway entrypoint (cmd/meshgw —
+# mesh-gateway — the standalone K8sAgentMesh gateway image (P3.5 vanilla install,
+# substrate closed in the substrate-hardening milestone): the HTTP gateway entrypoint (cmd/meshgw —
 # GET /healthz, GET /ready, POST /task over the standing band) plus the
 # mesh-owned standing supervisor (cmd/mesh-supervisor) it launches per band
 # slot via mesh.LocalHost (MESHGW_SHIM_BIN). The per-task coding-agent CLIs
 # are layered on top by the chart's toolchain initContainer — see
 # deploy/helm and images/README.md.
 #
-# ISI-6217: the base moved from distroless to debian-slim because the
+# Substrate hardening: the base moved from distroless to debian-slim because the
 # gateway pod is the standing band's host — its supervisor children exec
 # the layered toolchain CLIs (uv/Python, node), which a distroless/static
 # image cannot run. Built from the repo root:

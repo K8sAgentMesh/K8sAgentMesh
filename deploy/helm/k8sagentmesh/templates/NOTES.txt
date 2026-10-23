@@ -11,4 +11,4 @@ Per-task agentruntime supervisor:
 
 CRDs installed: meshroutes, meshtelemetries, meshpools (mesh.k8sagentmesh.io).
 Next: point a Route at the gateway service, or validate end-to-end with a
-vanilla kind install (ISI-6204).
+vanilla kind install (docs/quickstart.md).

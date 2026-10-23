@@ -1,5 +1,5 @@
 {{/* SPDX-License-Identifier: Apache-2.0 */}}
-{{/* Vanilla k8sagentmesh helpers (ISI-6158 C3). */}}
+{{/* Vanilla k8sagentmesh helpers (P3.5 vanilla install). */}}
 
 {{- define "k8sagentmesh.name" -}}
 {{- default .Chart.Name .Values.nameOverride | trunc 63 | trimSuffix "-" -}}

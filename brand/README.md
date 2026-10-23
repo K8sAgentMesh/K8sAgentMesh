@@ -1,7 +1,7 @@
 # K8sAgentMesh brand assets
 
 Display assets for the K8sAgentMesh brand — direction: **Viking North-Cross
-Constellation Compass** (board-locked on ISI-6046, kit approved 2026-10-17,
+Constellation Compass** (board-locked, kit approved 2026-10-17,
 acceptance card `ba1755b0`).
 
 | File | Size | Use |
