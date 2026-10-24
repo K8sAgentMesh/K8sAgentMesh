@@ -259,8 +259,7 @@ func (r *crewaiRouter) submit(ctx context.Context, endpoint string, task a2a.Tas
 			}
 			return nil, derr
 		}
-		st.googleID = gt.ID
-		st.contextID = gt.ContextID
+		st.adoptIDs(gt.ID, gt.ContextID)
 		s := &crewStream{
 			router:   r,
 			endpoint: endpoint,
@@ -281,7 +280,7 @@ func (r *crewaiRouter) submit(ctx context.Context, endpoint string, task a2a.Tas
 		events:   make(chan a2a.Event),
 		quit:     make(chan struct{}),
 	}
-	go s.pumpSSE()
+	go s.pumpSSE(context.WithoutCancel(ctx))
 	return s, nil
 }
 
@@ -296,8 +295,9 @@ func (r *crewaiRouter) sendAndPoll(ctx context.Context, endpoint string, task a2
 	if err != nil {
 		return nil, err
 	}
-	st.googleID = gt.ID
-	st.contextID = gt.ContextID
+	// adoptIDs is the locked write: st is already published in r.inflight,
+	// so a concurrent C1 re-route may be reading it via snapshot().
+	st.adoptIDs(gt.ID, gt.ContextID)
 	s := &crewStream{
 		router:   r,
 		endpoint: endpoint,
@@ -384,7 +384,7 @@ func (r *crewaiRouter) crewCancelTask(ctx context.Context, endpoint, googleID st
 // — the one failure that legitimately falls back to message/send. a2a-sdk
 // answers JSON-RPC errors both as 4xx/5xx statuses and as 200 with an in-body
 // error envelope, so the status is no signal: parse the body either way.
-func crewIsUnsupportedStreaming(status int, body []byte) bool {
+func crewIsUnsupportedStreaming(_ int, body []byte) bool {
 	var e struct {
 		Error *struct {
 			Code int `json:"code"`
@@ -839,8 +839,9 @@ func (s *crewStream) Close() error {
 
 // pumpSSE tails the message/stream response: data frames carry JSON-RPC
 // envelopes whose result is one crew frame. On body end with the task still
-// live, it hands over to poll reattach instead of settling short.
-func (s *crewStream) pumpSSE() {
+// live, it hands over to poll reattach instead of settling short. ctx is the
+// detached (never-canceled) request context the poll handover reuses.
+func (s *crewStream) pumpSSE(ctx context.Context) {
 	defer s.finish()
 	sc := bufio.NewScanner(s.body)
 	sc.Buffer(make([]byte, 0, 64*1024), 1<<20)
@@ -871,8 +872,9 @@ func (s *crewStream) pumpSSE() {
 				}}, true)
 				return
 			default:
-				// Live task, torn tail: reattach by polling.
-				s.pumpPoll(context.Background())
+				// Live task, torn tail: reattach by polling on the detached
+				// request context.
+				s.pumpPoll(ctx)
 				return
 			}
 		}

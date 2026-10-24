@@ -40,7 +40,9 @@ const (
 	// lanes). Crew model ids themselves stay crew-author-side — the crew
 	// project owns its agents and their models in code.
 	crewOpenAIBaseURLEnv = "OPENAI_BASE_URL"
-	crewOpenAIAPIKeyEnv  = "OPENAI_API_KEY"
+	// #nosec G101 -- the env-var NAME the crew's litellm lane reads; the
+	// secret value only ever flows in at launch via Envelope env.
+	crewOpenAIAPIKeyEnv = "OPENAI_API_KEY"
 )
 
 // NewCrewAdapter builds adapter #5 (chapter §9.3 P4.3, ISI-6547 — the mesh
@@ -110,7 +112,7 @@ type crewAdapter struct {
 // Hibernate is the cooperative no-op override: crews never freeze. It emits
 // the lifecycle telemetry (op "hibernate.noop") so an operator who armed
 // Hibernate on a crew pool sees the refusal instead of silence.
-func (a *crewAdapter) Hibernate(ctx context.Context, h Handle) error {
+func (a *crewAdapter) Hibernate(_ context.Context, h Handle) error {
 	ch, err := a.recover(h)
 	if err != nil {
 		return err
@@ -122,7 +124,7 @@ func (a *crewAdapter) Hibernate(ctx context.Context, h Handle) error {
 // Wake is the cooperative no-op override, the symmetric twin of Hibernate: a
 // never-frozen process needs no resume, and SIGCONT-ing the asyncio server
 // would be a no-op the process never asked for. Telemetry op "wake.noop".
-func (a *crewAdapter) Wake(ctx context.Context, h Handle) error {
+func (a *crewAdapter) Wake(_ context.Context, h Handle) error {
 	ch, err := a.recover(h)
 	if err != nil {
 		return err

@@ -275,8 +275,8 @@ func TestCrewAdapterDefaultsToCrewaiRouter(t *testing.T) {
 		t.Fatalf("NewCrewAdapter: %v", err)
 	}
 	ca := a.(*crewAdapter)
-	if _, ok := ca.ChildProcessAdapter.router.(*crewaiRouter); !ok {
-		t.Fatalf("default router = %T, want *crewaiRouter", ca.ChildProcessAdapter.router)
+	if _, ok := ca.router.(*crewaiRouter); !ok {
+		t.Fatalf("default router = %T, want *crewaiRouter", ca.router)
 	}
 
 	fr := &fakeRouter{}
@@ -284,7 +284,7 @@ func TestCrewAdapterDefaultsToCrewaiRouter(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewCrewAdapter with router: %v", err)
 	}
-	if got := a2nd.(*crewAdapter).ChildProcessAdapter.router; got != Router(fr) {
+	if got := a2nd.(*crewAdapter).router; got != Router(fr) {
 		t.Fatalf("WithRouter override = %T, want the injected fake", got)
 	}
 }
@@ -325,7 +325,10 @@ func TestCrewIsRuntimeAdapter(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewCrewAdapter: %v", err)
 	}
-	if _, ok := a.(RuntimeAdapter); !ok {
-		t.Fatal("crewAdapter must satisfy RuntimeAdapter")
+	// NewCrewAdapter's RuntimeAdapter return type is the compile-time half of
+	// the proof; pinning the concrete type keeps the runtime half honest (a
+	// different adapter slipping in would fail here).
+	if _, ok := a.(*crewAdapter); !ok {
+		t.Fatalf("NewCrewAdapter returned %T, want *crewAdapter behind the RuntimeAdapter seam", a)
 	}
 }
