@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792788420329,
+  "lastUpdate": 1792834925472,
   "repoUrl": "https://github.com/K8sAgentMesh/K8sAgentMesh",
   "entries": {
     "Benchmark": [
@@ -192,6 +192,102 @@ window.BENCHMARK_DATA = {
             "value": 3,
             "unit": "allocs/op",
             "extra": "4884282 times\n4 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "81800915+henrikrexed@users.noreply.github.com",
+            "name": "Henrik Rexed",
+            "username": "henrikrexed"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "22910c5a75913a521662400012d9f857de8e3e79",
+          "message": "Merge pull request #34 from K8sAgentMesh/mesh/isi-6547-crewai-pr\n\nfeat(mesh): CrewAI integration P4.3 — adapter #5 + crewaiRouter wire translation",
+          "timestamp": "2026-10-24T11:41:33+02:00",
+          "tree_id": "1996499b670b4add8cd9c22c845d562597a1dcb7",
+          "url": "https://github.com/K8sAgentMesh/K8sAgentMesh/commit/22910c5a75913a521662400012d9f857de8e3e79"
+        },
+        "date": 1792834924676,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkRoute",
+            "value": 37.58,
+            "unit": "ns/op\t      32 B/op\t       1 allocs/op",
+            "extra": "28935784 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkRoute - ns/op",
+            "value": 37.58,
+            "unit": "ns/op",
+            "extra": "28935784 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkRoute - B/op",
+            "value": 32,
+            "unit": "B/op",
+            "extra": "28935784 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkRoute - allocs/op",
+            "value": 1,
+            "unit": "allocs/op",
+            "extra": "28935784 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkIsSaturation",
+            "value": 26.99,
+            "unit": "ns/op\t       0 B/op\t       0 allocs/op",
+            "extra": "44975578 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkIsSaturation - ns/op",
+            "value": 26.99,
+            "unit": "ns/op",
+            "extra": "44975578 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkIsSaturation - B/op",
+            "value": 0,
+            "unit": "B/op",
+            "extra": "44975578 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkIsSaturation - allocs/op",
+            "value": 0,
+            "unit": "allocs/op",
+            "extra": "44975578 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkNewTeamSet",
+            "value": 183.8,
+            "unit": "ns/op\t     336 B/op\t       3 allocs/op",
+            "extra": "6552217 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkNewTeamSet - ns/op",
+            "value": 183.8,
+            "unit": "ns/op",
+            "extra": "6552217 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkNewTeamSet - B/op",
+            "value": 336,
+            "unit": "B/op",
+            "extra": "6552217 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkNewTeamSet - allocs/op",
+            "value": 3,
+            "unit": "allocs/op",
+            "extra": "6552217 times\n4 procs"
           }
         ]
       }
