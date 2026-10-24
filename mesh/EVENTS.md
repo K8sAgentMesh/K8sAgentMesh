@@ -100,3 +100,24 @@ and run ids are attributes only, never metric labels.
 Adding an emitter means implementing `mesh.LifecycleObserver` (+ optionally a
 gauge over `ProcessStateSnapshot`) and injecting it at the composition root —
 no gateway change, no telemetry SDK in the module.
+
+## Appendix: CrewAI wire event mapping (P4.3, adapter #5)
+
+The crewai adapter (`mesh/crewaiwire.go`) translates Google A2A 0.3.x SSE
+frames onto the module task-event schema. This appendix is the authoritative
+mapping (full context: `docs/crewai-integration.md`).
+
+| Google A2A frame | Module event | Mapping notes |
+|---|---|---|
+| Task snapshot (`kind: "task"`) | `EventStatus` | crew-side `googleID`/`contextId` adopted; artifacts already on the snapshot surface as updates |
+| `TaskStatusUpdateEvent` (`kind: "status-update"`) | `EventStatus` | states map 1:1 (`submitted/working/input-required/completed/failed/canceled/auth-required`); `rejected` → `failed`; `status.message` text also lifts to an `EventMessage` and, when no reason exists, to the bounded status reason (`a2a.ToolErrorSummary`, NFR-2) |
+| `TaskArtifactUpdateEvent` (`kind: "artifact-update"`) | `EventArtifactRef` + `EventMessage` | ref `Kind: "google-a2a-artifact"`, `URI: a2a://<googleTaskId>/<artifactId>`, `SHA256` **empty** — inline Google artifacts carry no coord-committed hash and one is never fabricated; the artifact's text parts ride the accompanying `EventMessage` so content is not lost |
+| `Message` (`kind: "message"`) | `EventMessage` | F16: `trust: "untrusted"`, display only |
+| *(no equivalent)* | `EventTool` | **never produced** — the Google wire has no tool-streaming surface; the crewai card advertises no tool capability |
+
+Sequence discipline (C4): the Google wire carries no seq; the router assigns
+the module seq (monotonic, gap-free from 1) on the shared per-task cursor, so
+a C1 reattach (in-flight re-route → `tasks/get` polling) or a torn-SSE
+handover continues the same sequence. The 0.3.x `final` flag settles the
+stream even on an unrecognized terminal state name. Frame classification
+tolerates both 0.3.x `kind` discriminators and 1.0 wrapper-member shapes.
