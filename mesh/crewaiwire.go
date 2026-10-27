@@ -544,6 +544,15 @@ type crewFrame struct {
 	status   crewWireStatus
 	artifact crewWireArte
 	message  crewWireMessage
+	// taskID/contextID are the crew-side ids every 0.3.x event frame carries
+	// (TaskStatusUpdateEvent/TaskArtifactUpdateEvent both do; a Task snapshot
+	// carries them as task.id/task.contextId instead). A real a2a-sdk
+	// message/stream never opens with a Task snapshot — the first frame is a
+	// status-update — so id adoption must happen on event frames too, or a
+	// torn tail looks like "no task was ever created" (and Close can never
+	// map to tasks/cancel). Found by the live lane (ISI-6547 phase 4).
+	taskID    string
+	contextID string
 	// final is the 0.3.x TaskStatusUpdateEvent.final flag (removed at 1.0,
 	// where stream close alone signals termination).
 	final bool
@@ -614,26 +623,29 @@ func crewClassifyShape(probe map[string]json.RawMessage, result json.RawMessage)
 
 func decodeStatusUpdate(result json.RawMessage) (*crewFrame, error) {
 	var su struct {
-		TaskID string         `json:"taskId"`
-		Status crewWireStatus `json:"status"`
-		Final  bool           `json:"final"`
+		TaskID    string         `json:"taskId"`
+		ContextID string         `json:"contextId"`
+		Status    crewWireStatus `json:"status"`
+		Final     bool           `json:"final"`
 	}
 	if err := json.Unmarshal(result, &su); err != nil {
 		return nil, err
 	}
-	return &crewFrame{kind: crewFrameStatusUpdate, status: su.Status, final: su.Final}, nil
+	return &crewFrame{kind: crewFrameStatusUpdate, status: su.Status, final: su.Final, taskID: su.TaskID, contextID: su.ContextID}, nil
 }
 
 // decodeArtifactUpdate lifts the artifact nested under the frame's "artifact"
 // member (both the 0.3.x kind frame and the 1.0 wrapper unwrap to this shape).
 func decodeArtifactUpdate(result json.RawMessage) (*crewFrame, error) {
 	var au struct {
-		Artifact crewWireArte `json:"artifact"`
+		TaskID    string       `json:"taskId"`
+		ContextID string       `json:"contextId"`
+		Artifact  crewWireArte `json:"artifact"`
 	}
 	if err := json.Unmarshal(result, &au); err != nil {
 		return nil, err
 	}
-	return &crewFrame{kind: crewFrameArtifactUpdate, artifact: au.Artifact}, nil
+	return &crewFrame{kind: crewFrameArtifactUpdate, artifact: au.Artifact, taskID: au.TaskID, contextID: au.ContextID}, nil
 }
 
 func string2kind(raw json.RawMessage) string {
@@ -961,8 +973,10 @@ func (s *crewStream) apply(f *crewFrame) bool {
 		}
 		return s.applyStatus(f.task.Status, false)
 	case crewFrameStatusUpdate:
+		s.st.adoptIDs(f.taskID, f.contextID)
 		return s.applyStatus(f.status, f.final)
 	case crewFrameArtifactUpdate:
+		s.st.adoptIDs(f.taskID, f.contextID)
 		s.emitArtifact(f.artifact)
 		return false
 	case crewFrameMessage:

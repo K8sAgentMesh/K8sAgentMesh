@@ -115,6 +115,21 @@ ingress are untouched — the fifth runtime (and the first non-CLI,
 framework-class one) exercises the seam with zero control-plane change,
 which is the P4.3 generalization proof.
 
+## Live lane (phase 4)
+
+`test/live/crewai/` drives the real pinned stack end-to-end: a real Crew
+kickoff (litellm lane → a zero-credential OpenAI-compatible stand-in) behind
+the a2a-sdk JSON-RPC+SSE server, tailed by the real `crewaiRouter`. Proves
+the happy path (marker-echoed output rides `EventArtifactRef`), C1 for real
+(re-route on the same `a2a_task_id` while in flight reattaches — exactly one
+kickoff), CancelTask (`Stream.Close()` → `tasks/cancel` server-side), the
+card at the well-known path, and the `AUTH_TOKEN` bearer. The lane found and
+fixed a real gap: a real a2a-sdk stream opens with a status-update, never a
+Task snapshot, so id adoption now happens on event frames too (before, a
+torn tail looked like "no task was ever created" and Close could never map
+to `tasks/cancel`). Run: `test/live/crewai/lane.sh` (uv provisions the pinned
+venv; the Go side is build-tagged `crewai_lane` and env-gated `CREWAI_LANE=1`).
+
 ## Host side (k8squad — separate story)
 
 Runtime registry entry (Type `crewai`, credential shape `OPENAI_API_KEY` +
