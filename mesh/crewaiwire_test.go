@@ -59,6 +59,10 @@ type fakeCrewServer struct {
 	holdStream bool
 	// v10frames serves 1.0 wrapper frames instead of 0.3.x kind frames.
 	v10frames bool
+	// noSnapshot serves the stream WITHOUT the opening Task snapshot — what
+	// a real a2a-sdk message/stream does (first frame is a status-update).
+	// The regression suite for id adoption from event frames.
+	noSnapshot bool
 	// sseClosed reports the last message/stream body was closed by the client.
 	sseBodiesClosed int
 }
@@ -109,6 +113,7 @@ func (f *fakeCrewServer) handleStream(w http.ResponseWriter, r *http.Request, re
 	streamReject := f.streamReject
 	hold := f.holdStream
 	v10 := f.v10frames
+	noSnap := f.noSnapshot
 	if !streamReject {
 		// Record only deliveries: a rejected message/stream never reached
 		// the crew, so C1 accounting must not count it.
@@ -132,7 +137,9 @@ func (f *fakeCrewServer) handleStream(w http.ResponseWriter, r *http.Request, re
 		frame(map[string]any{"statusUpdate": map[string]any{"taskId": "g-1", "contextId": "ctx-1", "status": map[string]any{"state": "TASK_STATE_COMPLETED"}}})
 		return
 	}
-	frame(crewWireTask{Kind: "task", ID: "g-1", ContextID: "ctx-1", Status: crewWireStatus{State: "working"}})
+	if !noSnap {
+		frame(crewWireTask{Kind: "task", ID: "g-1", ContextID: "ctx-1", Status: crewWireStatus{State: "working"}})
+	}
 	frame(map[string]any{
 		"kind": "status-update", "taskId": "g-1", "contextId": "ctx-1",
 		"status": map[string]any{"state": "working"},
@@ -423,6 +430,46 @@ func TestCrewaiRouterTerminalRerouteReplaysStatus(t *testing.T) {
 	}
 	if n := f.submissionCount(); n != 1 {
 		t.Fatalf("submissions = %d, want 1 — terminal re-route replays, never re-sends", n)
+	}
+}
+
+// Regression (found by the live lane, ISI-6547 phase 4): a real a2a-sdk
+// message/stream never opens with a Task snapshot — the first frame is a
+// status-update carrying taskId/contextId. Before event-frame id adoption
+// the router treated a torn tail on such a stream as "no task was ever
+// created" (failed) and Close could never map to tasks/cancel.
+func TestCrewaiRouterAdoptsIDsFromEventFrames(t *testing.T) {
+	f := newFakeCrewServer(t)
+	f.noSnapshot = true
+	f.holdStream = true
+	f.state = "completed"
+	r := NewCrewaiRouter(nil, "")
+
+	s, err := r.Route(context.Background(), f.endpoint(), crewTask("t-ev"))
+	if err != nil {
+		t.Fatalf("Route: %v", err)
+	}
+	if _, ok := <-s.Events(); !ok {
+		t.Fatal("stream closed before the first event")
+	}
+	// Close on the live task must now issue tasks/cancel with the id
+	// adopted from the status-update frame.
+	if err := s.Close(); err != nil {
+		t.Fatalf("Close: %v", err)
+	}
+	deadline := time.After(2 * time.Second)
+	for {
+		f.mu.Lock()
+		cancels := f.cancelCalls
+		f.mu.Unlock()
+		if cancels >= 1 {
+			return
+		}
+		select {
+		case <-deadline:
+			t.Fatalf("tasks/cancel never fired (cancelCalls=%d) — id not adopted from the status-update frame", cancels)
+		case <-time.After(50 * time.Millisecond):
+		}
 	}
 }
 
