@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794658290354,
+  "lastUpdate": 1794658638798,
   "repoUrl": "https://github.com/K8sAgentMesh/K8sAgentMesh",
   "entries": {
     "Benchmark": [
@@ -672,6 +672,102 @@ window.BENCHMARK_DATA = {
             "value": 3,
             "unit": "allocs/op",
             "extra": "4989739 times\n4 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "81800915+henrikrexed@users.noreply.github.com",
+            "name": "Henrik Rexed",
+            "username": "henrikrexed"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "8f7033b9525d1d3c438c0593e50b8365138c09d5",
+          "message": "Merge pull request #42 from K8sAgentMesh/dependabot/docker/distroless/static-25ac8f0\n\nbuild(deps): Bump distroless/static from `18f4cc2` to `25ac8f0`",
+          "timestamp": "2026-11-14T05:11:17-07:00",
+          "tree_id": "4000702533fee4391796ccdf97ea14d651fdd302",
+          "url": "https://github.com/K8sAgentMesh/K8sAgentMesh/commit/8f7033b9525d1d3c438c0593e50b8365138c09d5"
+        },
+        "date": 1794658638221,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkRoute",
+            "value": 50.26,
+            "unit": "ns/op\t      32 B/op\t       1 allocs/op",
+            "extra": "20751800 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkRoute - ns/op",
+            "value": 50.26,
+            "unit": "ns/op",
+            "extra": "20751800 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkRoute - B/op",
+            "value": 32,
+            "unit": "B/op",
+            "extra": "20751800 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkRoute - allocs/op",
+            "value": 1,
+            "unit": "allocs/op",
+            "extra": "20751800 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkIsSaturation",
+            "value": 36.48,
+            "unit": "ns/op\t       0 B/op\t       0 allocs/op",
+            "extra": "33002226 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkIsSaturation - ns/op",
+            "value": 36.48,
+            "unit": "ns/op",
+            "extra": "33002226 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkIsSaturation - B/op",
+            "value": 0,
+            "unit": "B/op",
+            "extra": "33002226 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkIsSaturation - allocs/op",
+            "value": 0,
+            "unit": "allocs/op",
+            "extra": "33002226 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkNewTeamSet",
+            "value": 239.6,
+            "unit": "ns/op\t     336 B/op\t       3 allocs/op",
+            "extra": "5021430 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkNewTeamSet - ns/op",
+            "value": 239.6,
+            "unit": "ns/op",
+            "extra": "5021430 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkNewTeamSet - B/op",
+            "value": 336,
+            "unit": "B/op",
+            "extra": "5021430 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkNewTeamSet - allocs/op",
+            "value": 3,
+            "unit": "allocs/op",
+            "extra": "5021430 times\n4 procs"
           }
         ]
       }
