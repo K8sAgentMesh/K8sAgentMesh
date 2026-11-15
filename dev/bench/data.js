@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1794681830296,
+  "lastUpdate": 1794775774836,
   "repoUrl": "https://github.com/K8sAgentMesh/K8sAgentMesh",
   "entries": {
     "Benchmark": [
@@ -864,6 +864,102 @@ window.BENCHMARK_DATA = {
             "value": 3,
             "unit": "allocs/op",
             "extra": "6393726 times\n4 procs"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "81800915+henrikrexed@users.noreply.github.com",
+            "name": "Henrik Rexed",
+            "username": "henrikrexed"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "e21f40067d890420d985262609912d7241797a1c",
+          "message": "Merge pull request #44 from K8sAgentMesh/dependabot/docker/golang-ec47ea3\n\nbuild(deps): Bump golang from `2920bb1` to `ec47ea3`",
+          "timestamp": "2026-11-15T13:49:02-07:00",
+          "tree_id": "a13766bc81d38b9326a43fa9086e710b05f66c83",
+          "url": "https://github.com/K8sAgentMesh/K8sAgentMesh/commit/e21f40067d890420d985262609912d7241797a1c"
+        },
+        "date": 1794775774455,
+        "tool": "go",
+        "benches": [
+          {
+            "name": "BenchmarkRoute",
+            "value": 26.28,
+            "unit": "ns/op\t      32 B/op\t       1 allocs/op",
+            "extra": "41335064 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkRoute - ns/op",
+            "value": 26.28,
+            "unit": "ns/op",
+            "extra": "41335064 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkRoute - B/op",
+            "value": 32,
+            "unit": "B/op",
+            "extra": "41335064 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkRoute - allocs/op",
+            "value": 1,
+            "unit": "allocs/op",
+            "extra": "41335064 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkIsSaturation",
+            "value": 19.12,
+            "unit": "ns/op\t       0 B/op\t       0 allocs/op",
+            "extra": "64285647 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkIsSaturation - ns/op",
+            "value": 19.12,
+            "unit": "ns/op",
+            "extra": "64285647 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkIsSaturation - B/op",
+            "value": 0,
+            "unit": "B/op",
+            "extra": "64285647 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkIsSaturation - allocs/op",
+            "value": 0,
+            "unit": "allocs/op",
+            "extra": "64285647 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkNewTeamSet",
+            "value": 132.7,
+            "unit": "ns/op\t     336 B/op\t       3 allocs/op",
+            "extra": "8953399 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkNewTeamSet - ns/op",
+            "value": 132.7,
+            "unit": "ns/op",
+            "extra": "8953399 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkNewTeamSet - B/op",
+            "value": 336,
+            "unit": "B/op",
+            "extra": "8953399 times\n4 procs"
+          },
+          {
+            "name": "BenchmarkNewTeamSet - allocs/op",
+            "value": 3,
+            "unit": "allocs/op",
+            "extra": "8953399 times\n4 procs"
           }
         ]
       }
